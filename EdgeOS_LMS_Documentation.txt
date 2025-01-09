@@ -1,0 +1,261 @@
+EdgeOS Learning Management System (LMS) Documentation
+=====================================================
+
+Table of Contents:
+1. Introduction
+2. System Architecture
+3. Key Features
+4. User Roles
+5. Pages and Their Functions
+6. Components
+7. Database Structure
+8. API Endpoints
+9. Authentication and Authorization
+10. Deployment
+
+1. Introduction
+----------------
+EdgeOS LMS is a multi-tiered learning management system designed to enable organizations 
+to track employee progress through training curriculum. It provides differentiated views 
+for executives (CEOs), supervisors, and team members, facilitating a comprehensive approach 
+to employee development and performance tracking.
+
+2. System Architecture
+-----------------------
+- Frontend: Next.js (App Router), React
+- Backend: Firebase (Firestore, Authentication)
+- Styling: Tailwind CSS, shadcn/ui components
+- State Management: React hooks, Context API
+- Deployment: Vercel
+
+3. Key Features
+----------------
+- User authentication and role-based access control
+- Customizable dashboards for different user roles
+- Training video playback and progress tracking
+- Worksheet completion and submission
+- Bold Action tracking and management
+- Performance metrics and KPI visualization
+- Team member progress monitoring for supervisors and executives
+- Company-wide progress tracking for executives
+- Invite system for adding new team members and supervisors
+
+4. User Roles
+--------------
+a. Team Member:
+   - Complete assigned trainings
+   - Submit worksheets
+   - Set and complete Bold Actions
+   - View personal progress
+
+b. Supervisor:
+   - All Team Member capabilities
+   - View team members' progress
+   - Access detailed information about team members' performance
+   - Monitor team's overall progress
+
+c. Executive:
+   - All Supervisor capabilities
+   - View company-wide progress and metrics
+   - Access all supervisors' and team members' data
+   - Manage company settings
+
+5. Pages and Their Functions
+----------------------------
+a. Sign In (/signin):
+   - Allows users to log into the system using their email and password.
+   - Provides links to forgot password and company setup pages.
+
+b. Dashboard (/dashboard):
+   - Serves as the main landing page after login.
+   - Redirects users to their role-specific dashboard (executive, supervisor, or team member).
+
+c. Executive Dashboard (/dashboard/executive):
+   - Provides an overview of company-wide training progress.
+   - Displays KPIs, completion rates, and follow-up requirements for supervisors.
+   - Allows executives to view detailed information about each supervisor and add meeting notes.
+
+d. Supervisor Dashboard (/dashboard/supervisor):
+   - Shows an overview of team members' progress.
+   - Allows supervisors to view detailed information about each team member's training and bold actions.
+   - Provides tools for managing and monitoring team performance.
+
+e. Team Member Dashboard (/):
+   - Displays personal progress, current training, and bold actions.
+   - Shows completed and upcoming training modules.
+   - Allows access to training videos and worksheets.
+
+f. Account Settings (/account):
+   - Enables users to update their personal information and change their password.
+
+g. Forgot Password (/forgot-password):
+   - Allows users to reset their password via email.
+
+h. Company Setup (/company-setup):
+   - Guides new companies through the process of setting up their account and creating the first executive user.
+
+i. Training Library (/training-library):
+   - Provides access to all completed training modules for review.
+   - Allows users to rewatch videos and review worksheets.
+
+j. Bold Actions (/bold-actions):
+   - Displays a list of all bold actions, both active and completed.
+   - Allows users to view details and update the status of their bold actions.
+
+k. Admin Dashboard (/admin):
+   - Accessible only to Brilliant Perspectives administrators.
+   - Provides tools for managing trainings and system-wide settings.
+
+l. Add Training (/admin/add-training):
+   - Allows administrators to create new training modules.
+
+m. Manage Trainings (/admin/trainings):
+   - Displays a list of all training modules.
+   - Allows administrators to edit or delete existing trainings.
+
+n. Company Settings (/company-settings):
+   - Allows executives to manage company-wide settings.
+   - Provides tools for generating invite links and updating company information.
+
+o. Supervisor Signup (/brilliant/supervisorsignup):
+   - Allows new supervisors to create their account using a company-specific invite link.
+
+p. Team Member Signup (/brilliant/teamsignup):
+   - Allows new team members to create their account using a company-specific invite link.
+
+q. Completed Trainings (/completed-trainings):
+   - Shows a list of all completed trainings for the current user.
+   - Provides details about completion dates and progress.
+
+6. Components
+--------------
+a. Authentication:
+   - SignIn
+   - Register
+   - ForgotPassword
+   - AuthProvider
+
+b. Dashboards:
+   - TeamMemberDashboard
+   - SupervisorDashboard
+   - ExecutiveDashboard
+
+c. Training:
+   - CourseModal
+   - WorksheetModal
+   - TrainingLibrary
+
+d. Bold Actions:
+   - BoldActionModal
+   - BoldActionsTracker
+
+e. Progress Tracking:
+   - TeamMemberDetailsModal
+   - ProgressCharts
+
+f. Admin:
+   - AdminDebugMenu
+   - CompanySetup
+
+g. UI Components:
+   - MainSidebar
+   - PageHeader
+   - LoadingScreen
+
+7. Database Structure
+----------------------
+Firestore Collections:
+a. users
+   - id: string
+   - firstName: string
+   - lastName: string
+   - email: string
+   - role: string
+   - companyName: string
+   - department: string
+   - yearsWithCompany: number
+   - completedTrainings: number
+   - completedWorksheets: number
+   - completedBoldActions: number
+
+b. companies
+   - id: string
+   - name: string
+   - size: number
+   - startDate: timestamp
+   - trainingStartDate: timestamp
+   - themeColor: string
+   - inviteLinks: {
+       supervisor: { linkId: string, url: string, createdAt: timestamp, expiresAt: timestamp },
+       team_member: { linkId: string, url: string, createdAt: timestamp, expiresAt: timestamp }
+     }
+
+c. trainings
+   - id: string
+   - title: string
+   - description: string
+   - videoLink: string
+   - trainingDate: timestamp
+   - createdAt: timestamp
+   - createdBy: string (user id)
+   - companyName: string
+
+d. worksheets
+   - id: string
+   - userId: string
+   - trainingId: string
+   - answers: { [question: string]: string }
+   - completedAt: timestamp
+   - boldAction: string
+   - timeframe: string
+   - actualTimeframe: string
+
+e. boldActions
+   - id: string
+   - userId: string
+   - action: string
+   - timeframe: string
+   - status: string
+   - createdAt: timestamp
+   - completedAt: timestamp
+   - worksheetId: string
+
+f. userProgress
+   - id: string (userId_trainingId)
+   - userId: string
+   - trainingId: string
+   - videoCompleted: boolean
+   - worksheetCompleted: boolean
+   - completionDate: timestamp
+
+8. API Endpoints
+-----------------
+a. /api/invite
+   - POST: Generate invite links for supervisors and team members
+
+b. /api/trainings
+   - GET: Fetch all trainings
+   - POST: Create a new training
+
+c. /api/trainings/[id]
+   - GET: Fetch a specific training
+   - PUT: Update a specific training
+   - DELETE: Delete a specific training
+
+d. /api/trainings/reorder
+   - POST: Reorder trainings based on a start date
+
+9. Authentication and Authorization
+------------------------------------
+- Firebase Authentication is used for user authentication
+- Custom AuthProvider component manages user state and role-based access
+- withRoleAccess higher-order component ensures proper access control for different user roles
+
+10. Deployment
+--------------
+- The application is deployed on Vercel
+- Environment variables are managed through Vercel's dashboard
+- Continuous deployment is set up with GitHub integration
+
+This documentation provides an overview of the EdgeOS LMS application. For more detailed information about specific components or functionalities, please refer to the inline comments in the respective code files.
+

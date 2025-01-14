@@ -16,7 +16,9 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
       <div className="flex-grow min-w-0 min-h-screen overflow-x-hidden bg-cover bg-center bg-no-repeat" style={{
         backgroundImage: "url('https://rzdccuvdljw6vbd9.public.blob.vercel-storage.com/Brilliant%20Gradient%20Pack-08-o0UBIWfn04dBV1myh1cHrj8dV5SWSN.jpeg')"
       }}>
-        {children}
+        <div className="container mx-auto py-6 px-4 sm:px-6">
+          {children}
+        </div>
       </div>
     </div>
   )

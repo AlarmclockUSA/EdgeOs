@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table"
 import { useAuth } from '@/lib/auth-context'
 import { db } from '@/lib/firebase'
-import { collection, query, where, getDocs } from 'firebase/firestore'
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, Firestore } from 'firebase/firestore'
 import { toast } from "@/components/ui/use-toast"
 import { CardContent } from "@/components/ui/card"
 
@@ -53,7 +53,12 @@ export default function SupervisorDashboard() {
       setLoading(true)
       setError(null)
       try {
-        const q = query(collection(db, 'users'), where('role', '==', 'team_member'), where('companyName', '==', companyName))
+        const usersRef = collection(db as Firestore, 'users')
+        const q = query(
+          usersRef, 
+          where('companyName', '==', companyName),
+          where('supervisorId', '==', user?.uid)
+        )
         const querySnapshot = await getDocs(q)
         const teamMembersData = querySnapshot.docs.map(doc => {
           const data = doc.data()
@@ -94,8 +99,8 @@ export default function SupervisorDashboard() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-bold mb-6">Supervisor Dashboard</h1>
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold mb-6 text-black">Supervisor Dashboard</h1>
       
       <StyledCard title="Team Member Overview">
         <CardContent>
@@ -104,33 +109,34 @@ export default function SupervisorDashboard() {
             placeholder="Search team members..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="mb-4 bg-white text-black border-gray-300"
+            className="mb-4 bg-white text-black border-gray-200"
           />
           <ScrollArea className="h-[600px]">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Current Bold Action</TableHead>
-                  <TableHead>Current Training</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Years with Company</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="text-black">Name</TableHead>
+                  <TableHead className="text-black">Current Bold Action</TableHead>
+                  <TableHead className="text-black">Current Training</TableHead>
+                  <TableHead className="text-black">Department</TableHead>
+                  <TableHead className="text-black">Years with Company</TableHead>
+                  <TableHead className="text-black">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredTeamMembers.map((member) => (
                   <TableRow key={member.id}>
-                    <TableCell>{member.name}</TableCell>
-                    <TableCell>{member.currentBoldAction}</TableCell>
-                    <TableCell>{member.currentTraining}</TableCell>
-                    <TableCell>{member.department}</TableCell>
-                    <TableCell>{member.yearsWithCompany}</TableCell>
+                    <TableCell className="text-black">{member.name}</TableCell>
+                    <TableCell className="text-black">{member.currentBoldAction}</TableCell>
+                    <TableCell className="text-black">{member.currentTraining}</TableCell>
+                    <TableCell className="text-black">{member.department}</TableCell>
+                    <TableCell className="text-black">{member.yearsWithCompany}</TableCell>
                     <TableCell>
                       <Button
-                        onClick={() => router.push(`/user-details/${member.id}`)} // Updated route
+                        onClick={() => router.push(`/user-details/${member.id}`)}
                         variant="outline"
                         size="sm"
+                        className="bg-white text-black border border-gray-200 hover:bg-gray-50 hover:text-black"
                       >
                         View Details
                       </Button>

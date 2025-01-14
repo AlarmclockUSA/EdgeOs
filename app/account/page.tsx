@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, Firestore } from 'firebase/firestore'
 import { updateEmail, updatePassword } from 'firebase/auth'
 import { useAuth } from '@/lib/auth-context'
 import { db, auth } from '@/lib/firebase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
 
 export default function Account() {
   const { user, loading } = useAuth()
@@ -41,23 +42,42 @@ export default function Account() {
     e.preventDefault()
     setError('')
     setSuccess('')
-    if (!user) return
+
+    if (!user || !db) {
+      setError('User not found')
+      return
+    }
 
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        firstName,
-        lastName,
-        updatedAt: new Date().toISOString()
-      })
+      const userRef = doc(db as Firestore, 'users', user.uid)
+      const userDoc = await getDoc(userRef)
+      const userData = userDoc.data()
 
-      if (email !== user.email) {
-        await updateEmail(user, email)
-        await updateDoc(doc(db, 'users', user.uid), { email })
+      if (userData?.email !== email) {
+        const emailRef = doc(db as Firestore, 'emails', email)
+        const emailDoc = await getDoc(emailRef)
+        if (emailDoc.exists()) {
+          setError('Email already in use')
+          return
+        }
+
+        if (userData?.email) {
+          const oldEmailRef = doc(db as Firestore, 'emails', userData.email)
+          await updateDoc(oldEmailRef, { userId: null })
+        }
+
+        await updateDoc(doc(db as Firestore, 'users', user.uid), { email })
       }
 
       if (newPassword) {
         await updatePassword(user, newPassword)
       }
+
+      await updateDoc(doc(db as Firestore, 'users', user.uid), {
+        firstName,
+        lastName,
+        updatedAt: new Date().toISOString()
+      })
 
       setSuccess('Profile updated successfully')
     } catch (err) {
@@ -71,56 +91,55 @@ export default function Account() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <Card className="max-w-md mx-auto">
+    <div className="space-y-6">
+      <Card className="max-w-md mx-auto bg-white">
         <CardHeader>
-          <CardTitle>Account Settings</CardTitle>
+          <CardTitle className="text-black">Account Settings</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="firstName" className="text-sm font-medium">First Name</label>
+            <div>
+              <Label htmlFor="firstName" className="text-black">First Name</Label>
               <Input
                 id="firstName"
-                type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                required
+                className="bg-white text-black border-gray-200"
               />
             </div>
-            <div className="space-y-2">
-              <label htmlFor="lastName" className="text-sm font-medium">Last Name</label>
+            <div>
+              <Label htmlFor="lastName" className="text-black">Last Name</Label>
               <Input
                 id="lastName"
-                type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                required
+                className="bg-white text-black border-gray-200"
               />
             </div>
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">Email</label>
+            <div>
+              <Label htmlFor="email" className="text-black">Email</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
+                className="bg-white text-black border-gray-200"
               />
             </div>
-            <div className="space-y-2">
-              <label htmlFor="newPassword" className="text-sm font-medium">New Password (leave blank to keep current)</label>
+            <div>
+              <Label htmlFor="newPassword" className="text-black">New Password (optional)</Label>
               <Input
                 id="newPassword"
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                className="bg-white text-black border-gray-200"
               />
             </div>
             {error && <p className="text-red-500">{error}</p>}
-            {success && <p className="text-green-500">{success}</p>}
-            <Button type="submit" className="w-full">
-              Update Profile
+            {success && <p className="text-green-600">{success}</p>}
+            <Button type="submit" className="w-full bg-white text-black border border-gray-200 hover:bg-gray-50 hover:text-black">
+              Save Changes
             </Button>
           </form>
         </CardContent>

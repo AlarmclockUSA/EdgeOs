@@ -1,72 +1,108 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState } from 'react'
-import { User, onAuthStateChanged, getIdTokenResult } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
-import { auth, db } from './firebase'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { onAuthStateChanged, User, Auth } from 'firebase/auth'
+import { doc, getDoc, Firestore } from 'firebase/firestore'
+import { auth as firebaseAuth, db } from './firebase'
+import { syncUserRoles, LMSRole } from './auth/role-mapping'
+import { useRouter } from 'next/navigation'
 
 interface AuthContextType {
   user: User | null
-  userRole: string | null
-  userPermissions: string[]
-  companyName: string | null
   loading: boolean
-  refreshUserSession: () => Promise<void>
+  userRole: LMSRole | null
+  companyId: string | null
+  companyName: string | null
+  permissions: string[]
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  userRole: null,
-  userPermissions: [],
-  companyName: null,
   loading: true,
-  refreshUserSession: async () => {}
+  userRole: null,
+  companyId: null,
+  companyName: null,
+  permissions: []
 })
 
-export const useAuth = () => useContext(AuthContext)
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
-  const [userRole, setUserRole] = useState<string | null>(null)
-  const [userPermissions, setUserPermissions] = useState<string[]>([])
-  const [companyName, setCompanyName] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-
-  const refreshUserSession = async () => {
-    if (auth.currentUser) {
-      const token = await auth.currentUser.getIdToken(true)
-      const idTokenResult = await getIdTokenResult(auth.currentUser)
-      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid))
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data()
-        setUserRole(userData.role)
-        setUserPermissions(userData.permissions || [])
-        setCompanyName(userData.companyName)
-      }
-    }
-  }
+  const [userRole, setUserRole] = useState<LMSRole | null>(null)
+  const [companyId, setCompanyId] = useState<string | null>(null)
+  const [companyName, setCompanyName] = useState<string | null>(null)
+  const [permissions, setPermissions] = useState<string[]>([])
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (!firebaseAuth) return
+
+    const unsubscribe = onAuthStateChanged(firebaseAuth as Auth, async (user) => {
       setUser(user)
+      
       if (user) {
-        await refreshUserSession()
+        try {
+          const userDoc = await getDoc(doc(db as Firestore, 'users', user.uid))
+          if (userDoc.exists()) {
+            const userData = userDoc.data()
+            const role = userData.role as LMSRole
+            setUserRole(role)
+            setCompanyId(userData.companyId || null)
+            setCompanyName(userData.companyName || null)
+
+            // If user has no company association, redirect to join company
+            if (!userData.companyName) {
+              router.push('/join-company')
+              return
+            }
+
+            // Sync roles and get permissions
+            const syncedRoles = await syncUserRoles(user, role, {
+              companyId: userData.companyId,
+              companyName: userData.companyName
+            })
+
+            setPermissions(syncedRoles.permissions)
+
+            // Redirect to home if they have a company
+            router.push('/')
+          } else {
+            // If user exists in Firebase Auth but not in Firestore, redirect to join company
+            router.push('/join-company')
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error)
+          router.push('/join-company')
+        }
       } else {
         setUserRole(null)
-        setUserPermissions([])
+        setCompanyId(null)
         setCompanyName(null)
+        setPermissions([])
+        router.push('/signin')
       }
+      
       setLoading(false)
     })
 
     return () => unsubscribe()
-  }, [])
+  }, [router])
 
   return (
-    <AuthContext.Provider value={{ user, userRole, userPermissions, companyName, loading, refreshUserSession }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      userRole, 
+      companyId,
+      companyName, 
+      permissions
+    }}>
       {children}
     </AuthContext.Provider>
   )
+}
+
+export function useAuth() {
+  return useContext(AuthContext)
 }
 

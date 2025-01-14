@@ -28,6 +28,11 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isExecutive());
       allow write: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Allow users to read/write their own progress data
+      match /progress/{progressType} {
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      }
     }
     
     // Allow read/write access to authenticated users for the 'invites' collection

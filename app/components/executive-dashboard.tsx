@@ -114,18 +114,18 @@ export default function ExecutiveDashboard() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-bold mb-6">Executive Dashboard</h1>
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold mb-6 text-black">Executive Dashboard</h1>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Supervisor Overview</CardTitle>
+      <Card className="bg-white">
+        <CardHeader className="border-b">
+          <CardTitle className="text-black">Supervisor Overview</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="bg-white">
           <Tabs defaultValue="all" className="w-full" onValueChange={(value) => setActiveTab(value)}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="all">All Supervisors</TabsTrigger>
-              <TabsTrigger value="direct">Direct Reports</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 bg-gray-100">
+              <TabsTrigger value="all" className="data-[state=active]:bg-white data-[state=active]:text-black">All Supervisors</TabsTrigger>
+              <TabsTrigger value="direct" className="data-[state=active]:bg-white data-[state=active]:text-black">Direct Reports</TabsTrigger>
             </TabsList>
             <TabsContent value="all">
               <SupervisorTable 
@@ -158,31 +158,32 @@ function SupervisorTable({ supervisors, searchTerm, setSearchTerm, router }) {
         placeholder="Search supervisors..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
-        className="mb-4"
+        className="mb-4 bg-white text-black border-gray-200"
       />
       <ScrollArea className="h-[600px]">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Current Bold Action</TableHead>
-              <TableHead>Current Training</TableHead>
-              <TableHead>Department</TableHead>
-              <TableHead>Actions</TableHead>
+            <TableRow className="bg-gray-50">
+              <TableHead className="text-black">Name</TableHead>
+              <TableHead className="text-black">Current Bold Action</TableHead>
+              <TableHead className="text-black">Current Training</TableHead>
+              <TableHead className="text-black">Department</TableHead>
+              <TableHead className="text-black">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {supervisors.map((supervisor) => (
-              <TableRow key={supervisor.id}>
-                <TableCell>{supervisor.name}</TableCell>
-                <TableCell>{supervisor.currentBoldAction}</TableCell>
-                <TableCell>{supervisor.currentTraining}</TableCell>
-                <TableCell>{supervisor.department}</TableCell>
+              <TableRow key={supervisor.id} className="hover:bg-gray-50">
+                <TableCell className="text-black">{supervisor.name}</TableCell>
+                <TableCell className="text-black">{supervisor.currentBoldAction}</TableCell>
+                <TableCell className="text-black">{supervisor.currentTraining}</TableCell>
+                <TableCell className="text-black">{supervisor.department}</TableCell>
                 <TableCell>
                   <Button
-                    onClick={() => router.push(`/user-details/${supervisor.id}`)} // Updated route
+                    onClick={() => router.push(`/user-details/${supervisor.id}`)}
                     variant="outline"
                     size="sm"
+                    className="bg-white text-black border-gray-200 hover:bg-gray-50"
                   >
                     View Details
                   </Button>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { doc, getDoc, updateDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, collection, query, where, getDocs, writeBatch, Firestore } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,22 @@ import { toast } from '@/components/ui/use-toast'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { FirebaseError } from 'firebase/app'
+
+interface CompanyUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  supervisorId?: string;
+  companyName?: string;
+}
+
+interface Updates {
+  role?: string;
+  supervisorId?: string;
+  [key: string]: any;
+}
 
 function CompanySettings() {
   const [companyName, setCompanyName] = useState('')
@@ -22,9 +38,9 @@ function CompanySettings() {
   const [supervisorPassword, setSupervisorPassword] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [users, setUsers] = useState([])
-  const [supervisors, setSupervisors] = useState([])
-  const [selectedUsers, setSelectedUsers] = useState({})
+  const [users, setUsers] = useState<CompanyUser[]>([])
+  const [supervisors, setSupervisors] = useState<CompanyUser[]>([])
+  const [selectedUsers, setSelectedUsers] = useState<Record<string, boolean>>({})
   const [batchRole, setBatchRole] = useState('')
   const [batchSupervisor, setBatchSupervisor] = useState('')
   const [selectedRole, setSelectedRole] = useState<'team_member' | 'supervisor'>('team_member')
@@ -33,8 +49,8 @@ function CompanySettings() {
 
   useEffect(() => {
     const fetchCompanyData = async () => {
-      if (authCompanyName) {
-        const companyRef = doc(db, 'companies', authCompanyName)
+      if (authCompanyName && db) {
+        const companyRef = doc(db as Firestore, 'companies', authCompanyName)
         const companyDoc = await getDoc(companyRef)
         if (companyDoc.exists()) {
           const data = companyDoc.data()
@@ -52,13 +68,13 @@ function CompanySettings() {
     setError('')
     setSuccess('')
 
-    if (!authCompanyName) {
+    if (!authCompanyName || !db) {
       setError('Company not found')
       return
     }
 
     try {
-      const companyRef = doc(db, 'companies', authCompanyName)
+      const companyRef = doc(db as Firestore, 'companies', authCompanyName)
       await updateDoc(companyRef, {
         name: companyName,
         size: parseInt(companySize),
@@ -72,11 +88,14 @@ function CompanySettings() {
   }
 
   const fetchUsers = async () => {
-    if (authCompanyName) {
-      const usersRef = collection(db, 'users')
+    if (authCompanyName && db) {
+      const usersRef = collection(db as Firestore, 'users')
       const q = query(usersRef, where('companyName', '==', authCompanyName))
       const querySnapshot = await getDocs(q)
-      const fetchedUsers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      const fetchedUsers = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as CompanyUser[]
       setUsers(fetchedUsers)
       setSupervisors(fetchedUsers.filter(user => user.role === 'supervisor' || user.role === 'executive'))
     }
@@ -87,8 +106,10 @@ function CompanySettings() {
   }, [authCompanyName])
 
   const handleRoleChange = async (userId: string, newRole: string) => {
+    if (!db) return;
+    
     try {
-      const userRef = doc(db, 'users', userId)
+      const userRef = doc(db as Firestore, 'users', userId)
       const userDoc = await getDoc(userRef)
       const userData = userDoc.data()
       
@@ -100,7 +121,7 @@ function CompanySettings() {
       fetchUsers() // Refresh the user list
     } catch (error) {
       console.error('Error updating user role:', error)
-      if (error instanceof Error && error.name === "FirebaseError" && error.code === "permission-denied") {
+      if (error instanceof FirebaseError && error.code === "permission-denied") {
         toast({
           title: "Permission Denied",
           description: "You don't have permission to update user roles. Please contact your system administrator.",
@@ -117,10 +138,21 @@ function CompanySettings() {
   }
 
   const handleSupervisorChange = async (userId: string, newSupervisorId: string) => {
+    if (!db) return;
+    
     try {
-      const userRef = doc(db, 'users', userId)
+      const userRef = doc(db as Firestore, 'users', userId)
       const userDoc = await getDoc(userRef)
-      const userData = userDoc.data()
+      const userData = userDoc.data() as CompanyUser | undefined
+
+      if (!userData) {
+        toast({
+          title: "Error",
+          description: "User data not found.",
+          variant: "destructive",
+        })
+        return
+      }
 
       if (userData.role === 'executive') {
         toast({
@@ -136,7 +168,7 @@ function CompanySettings() {
         title: "Supervisor Assigned",
         description: "User has been successfully assigned to a supervisor.",
       })
-      fetchUsers() // Refresh the user list
+      fetchUsers()
     } catch (error) {
       console.error('Error assigning supervisor:', error)
       toast({
@@ -159,7 +191,7 @@ function CompanySettings() {
     if (allSelected) {
       setSelectedUsers({})
     } else {
-      const newSelected = {}
+      const newSelected: Record<string, boolean> = {}
       users.forEach(user => {
         newSelected[user.id] = true
       })
@@ -168,6 +200,8 @@ function CompanySettings() {
   }
 
   const handleBatchUpdate = async () => {
+    if (!db) return;
+    
     const selectedUserIds = Object.keys(selectedUsers).filter(id => selectedUsers[id])
     if (selectedUserIds.length === 0) {
       toast({
@@ -178,15 +212,15 @@ function CompanySettings() {
       return
     }
 
-    const batch = writeBatch(db)
+    const batch = writeBatch(db as Firestore)
     selectedUserIds.forEach(userId => {
-      const userRef = doc(db, 'users', userId)
-      const updates = {}
+      const userRef = doc(db as Firestore, 'users', userId)
+      const updates: Updates = {}
       if (batchRole) {
-        updates['role'] = batchRole
+        updates.role = batchRole
       }
       if (batchSupervisor && batchRole !== 'supervisor' && batchRole !== 'executive') {
-        updates['supervisorId'] = batchSupervisor
+        updates.supervisorId = batchSupervisor
       }
       batch.update(userRef, updates)
     })
@@ -197,7 +231,7 @@ function CompanySettings() {
         title: "Batch Update Successful",
         description: "Selected users have been updated.",
       })
-      fetchUsers() // Refresh the user list
+      fetchUsers()
       setSelectedUsers({})
       setBatchRole('')
       setBatchSupervisor('')
@@ -212,90 +246,53 @@ function CompanySettings() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-bold mb-6">Company Settings</h1>
+    <div className="container mx-auto p-6 space-y-6 bg-white">
+      <h1 className="text-3xl font-bold mb-6 text-black">Company Settings</h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Update Company Information</CardTitle>
+      <Card className="bg-white">
+        <CardHeader className="border-b">
+          <CardTitle className="text-black">Update Company Information</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleUpdateCompany} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="companyName">Company Name</Label>
+              <Label htmlFor="companyName" className="text-black">Company Name</Label>
               <Input
                 id="companyName"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 required
+                className="bg-white text-black border-gray-200"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="companySize">Company Size</Label>
+              <Label htmlFor="companySize" className="text-black">Company Size</Label>
               <Input
                 id="companySize"
                 type="number"
                 value={companySize}
                 onChange={(e) => setCompanySize(e.target.value)}
                 required
+                className="bg-white text-black border-gray-200"
               />
             </div>
-            <Button type="submit">Update Company</Button>
+            <Button type="submit" className="bg-white text-black border border-gray-200 hover:bg-gray-50">
+              Update Company
+            </Button>
           </form>
         </CardContent>
       </Card>
 
-      <Card>
-  <CardHeader>
-    <CardTitle>Signup Links</CardTitle>
-  </CardHeader>
-  <CardContent>
-    <p className="mb-4">Share these links to allow team members and supervisors to sign up:</p>
-    <div className="space-y-4">
-      <div className="flex items-center space-x-2">
-        <Select defaultValue="team_member" onValueChange={(value) => setSelectedRole(value as 'team_member' | 'supervisor')}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="team_member">Team Member</SelectItem>
-            <SelectItem value="supervisor">Supervisor</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          value={`${process.env.NEXT_PUBLIC_BASE_URL}/brilliant/${selectedRole === 'supervisor' ? 'supervisorsignup' : 'teamsignup'}`}
-          readOnly
-        />
-        <Button
-          onClick={() => {
-            const link = `${process.env.NEXT_PUBLIC_BASE_URL}/brilliant/${selectedRole === 'supervisor' ? 'supervisorsignup' : 'teamsignup'}`;
-            navigator.clipboard.writeText(link);
-            toast({
-              title: "Link Copied",
-              description: `The ${selectedRole} signup link has been copied to your clipboard.`,
-            });
-          }}
-        >
-          Copy
-        </Button>
-      </div>
-    </div>
-  </CardContent>
-</Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Company Users</CardTitle>
+      <Card className="bg-white">
+        <CardHeader className="border-b">
+          <CardTitle className="text-black">User Management</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-4 text-sm text-muted-foreground">
-            To designate a user as a supervisor, change their role to "Supervisor" using the dropdown menu in the "Role" column.
-          </p>
-          <div className="mb-4 space-y-2">
-            <div className="flex items-center space-x-2">
+          <div className="space-y-4">
+            <div className="flex items-center space-x-4">
               <Select value={batchRole} onValueChange={setBatchRole}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select batch role" />
+                <SelectTrigger className="w-[200px] bg-white text-black border-gray-200">
+                  <SelectValue placeholder="Select role..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="team_member">Team Member</SelectItem>
@@ -303,92 +300,98 @@ function CompanySettings() {
                   <SelectItem value="executive">Executive</SelectItem>
                 </SelectContent>
               </Select>
+
               <Select value={batchSupervisor} onValueChange={setBatchSupervisor}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Select batch supervisor" />
+                <SelectTrigger className="w-[200px] bg-white text-black border-gray-200">
+                  <SelectValue placeholder="Select supervisor..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {supervisors.map((supervisor) => (
+                  {supervisors.map(supervisor => (
                     <SelectItem key={supervisor.id} value={supervisor.id}>
                       {supervisor.firstName} {supervisor.lastName}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button onClick={handleBatchUpdate}>Update Selected</Button>
+
+              <Button 
+                onClick={handleBatchUpdate}
+                className="bg-white text-black border border-gray-200 hover:bg-gray-50"
+              >
+                Update Selected
+              </Button>
             </div>
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px]">
-                  <Checkbox
-                    checked={users.length > 0 && users.every(user => selectedUsers[user.id])}
-                    onCheckedChange={handleSelectAll}
-                  />
-                </TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Supervisor</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
+
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="w-12">
                     <Checkbox
-                      checked={selectedUsers[user.id] || false}
-                      onCheckedChange={() => handleSelectUser(user.id)}
+                      checked={users.length > 0 && users.every(user => selectedUsers[user.id])}
+                      onCheckedChange={handleSelectAll}
                     />
-                  </TableCell>
-                  <TableCell>{user.firstName} {user.lastName}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <Select
-                      value={user.role}
-                      onValueChange={(newRole) => handleRoleChange(user.id, newRole)}
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="team_member">Team Member</SelectItem>
-                        <SelectItem value="supervisor">Supervisor</SelectItem>
-                        <SelectItem value="executive">Executive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    {user.role !== 'executive' ? (
-                      <Select
-                        value={user.supervisorId || ''}
-                        onValueChange={(newSupervisorId) => handleSupervisorChange(user.id, newSupervisorId)}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Assign supervisor" />
+                  </TableHead>
+                  <TableHead className="text-black">Name</TableHead>
+                  <TableHead className="text-black">Role</TableHead>
+                  <TableHead className="text-black">Supervisor</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map(user => (
+                  <TableRow key={user.id} className="hover:bg-gray-50">
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedUsers[user.id] || false}
+                        onCheckedChange={() => handleSelectUser(user.id)}
+                      />
+                    </TableCell>
+                    <TableCell className="text-black">
+                      {user.firstName} {user.lastName}
+                    </TableCell>
+                    <TableCell>
+                      <Select value={user.role} onValueChange={(value) => handleRoleChange(user.id, value)}>
+                        <SelectTrigger className="w-[140px] bg-white text-black border-gray-200">
+                          <SelectValue>{user.role}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          {supervisors.filter(supervisor => supervisor.id !== user.id).map((supervisor) => (
+                          <SelectItem value="team_member">Team Member</SelectItem>
+                          <SelectItem value="supervisor">Supervisor</SelectItem>
+                          <SelectItem value="executive">Executive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Select 
+                        value={user.supervisorId || ''} 
+                        onValueChange={(value) => handleSupervisorChange(user.id, value)}
+                        disabled={user.role === 'executive'}
+                      >
+                        <SelectTrigger className="w-[200px] bg-white text-black border-gray-200">
+                          <SelectValue>
+                            {(() => {
+                              const supervisor = supervisors.find(s => s.id === user.supervisorId)
+                              return supervisor 
+                                ? `${supervisor.firstName} ${supervisor.lastName}`
+                                : 'Select supervisor...'
+                            })()}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {supervisors.map(supervisor => (
                             <SelectItem key={supervisor.id} value={supervisor.id}>
                               {supervisor.firstName} {supervisor.lastName}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    ) : (
-                      'N/A'
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
-
-      {error && <p className="text-red-500 mt-4">{error}</p>}
-      {success && <p className="text-green-500 mt-4">{success}</p>}
     </div>
   )
 }

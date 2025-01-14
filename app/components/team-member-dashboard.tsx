@@ -16,13 +16,13 @@ export default function TeamMemberDashboard() {
   const overallProgress = courses.reduce((acc, course) => acc + course.progress, 0) / courses.length
 
   return (
-    <div className="container section">
+    <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-semibold text-white">My Learning Dashboard</h2>
-          <p className="text-gray-400">Track your progress and upcoming courses</p>
+          <h2 className="text-2xl font-semibold text-black">My Learning Dashboard</h2>
+          <p className="text-gray-600">Track your progress and upcoming courses</p>
         </div>
-        <select className="px-3 py-2 rounded-lg border border-gray-700 bg-gray-800 text-white">
+        <select className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-black">
           <option>This Week</option>
           <option>This Month</option>
           <option>This Quarter</option>
@@ -30,71 +30,71 @@ export default function TeamMemberDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <Card className="dashboard-card">
-          <CardHeader className="dashboard-card-header">
-            <CardTitle className="text-white">Overall Progress</CardTitle>
+        <Card className="bg-white">
+          <CardHeader>
+            <CardTitle className="text-black">Overall Progress</CardTitle>
           </CardHeader>
-          <CardContent className="dashboard-card-content">
+          <CardContent>
             <div className="space-y-4">
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold text-white">{overallProgress.toFixed(0)}%</span>
-                <span className="text-green-400">completed</span>
+                <span className="text-4xl font-bold text-black">{overallProgress.toFixed(0)}%</span>
+                <span className="text-green-600">completed</span>
               </div>
-              <Progress value={overallProgress} className="progress-bar h-2 bg-gray-700" indicatorClassName="progress-bar-value bg-green-500" />
+              <Progress value={overallProgress} className="h-2 bg-gray-100" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="dashboard-card">
-          <CardHeader className="dashboard-card-header">
-            <CardTitle className="text-white">Courses Completed</CardTitle>
+        <Card className="bg-white">
+          <CardHeader>
+            <CardTitle className="text-black">Courses Completed</CardTitle>
           </CardHeader>
-          <CardContent className="dashboard-card-content">
+          <CardContent>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-white">
+              <span className="text-4xl font-bold text-black">
                 {courses.filter(c => c.progress === 100).length}
               </span>
-              <span className="text-purple-400">of {courses.length}</span>
+              <span className="text-purple-600">of {courses.length}</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="dashboard-card">
-          <CardHeader className="dashboard-card-header">
-            <CardTitle className="text-white">Next Due Date</CardTitle>
+        <Card className="bg-white">
+          <CardHeader>
+            <CardTitle className="text-black">Next Due Date</CardTitle>
           </CardHeader>
-          <CardContent className="dashboard-card-content">
+          <CardContent>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-white">3</span>
-              <span className="text-orange-400">days</span>
+              <span className="text-4xl font-bold text-black">3</span>
+              <span className="text-orange-600">days</span>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="dashboard-card">
-        <CardHeader className="dashboard-card-header">
-          <CardTitle className="text-white">My Courses</CardTitle>
+      <Card className="bg-white">
+        <CardHeader>
+          <CardTitle className="text-black">My Courses</CardTitle>
         </CardHeader>
-        <CardContent className="dashboard-card-content">
+        <CardContent>
           <ScrollArea className="h-[calc(100vh-350px)]">
             <div className="space-y-6">
               {courses.map((course) => (
                 <div key={course.id} className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-medium text-white">{course.name}</h3>
-                      <p className="text-sm text-gray-400">
+                      <h3 className="font-medium text-black">{course.name}</h3>
+                      <p className="text-sm text-gray-600">
                         {course.progress}% Complete
                       </p>
                     </div>
                     {course.progress < 100 && (
-                      <Button className="btn btn-primary">
+                      <Button>
                         Continue Course
                       </Button>
                     )}
                   </div>
-                  <Progress value={course.progress} className="progress-bar h-2 bg-gray-700" indicatorClassName="progress-bar-value bg-purple-500" />
+                  <Progress value={course.progress} className="h-2 bg-gray-100" />
                 </div>
               ))}
             </div>

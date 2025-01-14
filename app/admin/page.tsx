@@ -28,27 +28,27 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold mb-6 text-black">Admin Dashboard</h1>
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Manage Trainings</CardTitle>
+        <Card className="bg-white">
+          <CardHeader className="border-b">
+            <CardTitle className="text-black">Manage Trainings</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="mb-4">View, add, edit, or delete training sessions.</p>
-            <Button asChild>
+            <p className="mb-4 text-gray-600">View, add, edit, or delete training sessions.</p>
+            <Button asChild className="bg-white text-black border border-gray-200 hover:bg-gray-50 hover:text-black">
               <Link href="/admin/trainings">View Trainings</Link>
             </Button>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Add New Training</CardTitle>
+        <Card className="bg-white">
+          <CardHeader className="border-b">
+            <CardTitle className="text-black">Add New Training</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="mb-4">Create a new training session for your team.</p>
-            <Button asChild>
+            <p className="mb-4 text-gray-600">Create a new training session for your team.</p>
+            <Button asChild className="bg-white text-black border border-gray-200 hover:bg-gray-50 hover:text-black">
               <Link href="/admin/add-training">Add Training</Link>
             </Button>
           </CardContent>

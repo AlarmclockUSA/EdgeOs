@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { signInWithEmailAndPassword } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
+import { signInWithEmailAndPassword, Auth } from 'firebase/auth'
+import { auth as firebaseAuth } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,17 +15,22 @@ export default function SignIn() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setLoading(true)
+
     try {
-      await signInWithEmailAndPassword(auth, email, password)
+      await signInWithEmailAndPassword(firebaseAuth as Auth, email, password)
       router.push('/')
     } catch (err) {
-      setError('Failed to sign in')
-      console.error(err)
+      console.error('Sign in error:', err)
+      setError('Invalid email or password')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -69,9 +74,13 @@ export default function SignIn() {
                 className="rounded-md bg-white border border-gray-200 hover:border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 focus:outline-none text-gray-900 autofill:bg-white autofill:shadow-[inset_0_0_0px_1000px_white]"
               />
             </div>
-            {error && <p className="text-red-500">{error}</p>}
-            <Button type="submit" className="w-full text-white hover:opacity-90 transition-opacity bg-gradient-to-r from-[#55763F] to-[#DD941C]">
-              Sign In
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+            <Button 
+              type="submit" 
+              className="w-full text-white hover:opacity-90 transition-opacity bg-gradient-to-r from-[#55763F] to-[#DD941C]"
+              disabled={loading}
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
           <div className="mt-4 text-center space-y-2">
@@ -80,17 +89,21 @@ export default function SignIn() {
                 Forgot password?
               </Link>
             </p>
-            <p className="text-sm">
-              <Link href="/company-setup" className="text-blue-600 hover:underline flex items-center justify-center">
-                Create a Company <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </p>
+            <div className="flex flex-col space-y-2">
+              <p className="text-sm">
+                <Link href="/join-company" className="text-blue-600 hover:underline flex items-center justify-center">
+                  Join a Company <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </p>
+              <p className="text-sm">
+                <Link href="/company-setup" className="text-blue-600 hover:underline flex items-center justify-center">
+                  Create a Company <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
-      <style jsx>{`
-
-`}</style>
     </div>
   )
 }

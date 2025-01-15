@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase'
 import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { withRoleAccess } from '@/lib/with-role-access'
 import { Copy, Check } from 'lucide-react'
@@ -245,6 +245,9 @@ function CompanySettings() {
     }
   }
 
+  const teamMemberLink = authCompanyName ? `${window.location.origin}/brilliant/teamsignup?company=${encodeURIComponent(authCompanyName)}` : ''
+  const supervisorLink = authCompanyName ? `${window.location.origin}/brilliant/supervisorsignup?company=${encodeURIComponent(authCompanyName)}` : ''
+
   return (
     <div className="container mx-auto p-6 space-y-6 bg-white">
       <h1 className="text-3xl font-bold mb-6 text-black">Company Settings</h1>
@@ -389,6 +392,78 @@ function CompanySettings() {
                 ))}
               </TableBody>
             </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white">
+        <CardHeader className="border-b">
+          <CardTitle className="text-black">Join Links</CardTitle>
+          <CardDescription>Share these links with new team members and supervisors</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium mb-2">Team Member Join Link</h3>
+              <div className="flex items-center gap-4">
+                <Input 
+                  readOnly 
+                  value={teamMemberLink}
+                  className="bg-white text-black border-gray-200"
+                />
+                <Button 
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(teamMemberLink)
+                      toast({
+                        title: "Link Copied",
+                        description: "Team member join link has been copied to clipboard",
+                      })
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to copy link to clipboard",
+                        variant: "destructive",
+                      })
+                    }
+                  }}
+                  className="bg-white text-black border border-gray-200 hover:bg-gray-50"
+                >
+                  Copy Link
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-medium mb-2">Supervisor Join Link</h3>
+              <div className="flex items-center gap-4">
+                <Input 
+                  readOnly 
+                  value={supervisorLink}
+                  className="bg-white text-black border-gray-200"
+                />
+                <Button 
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(supervisorLink)
+                      toast({
+                        title: "Link Copied",
+                        description: "Supervisor join link has been copied to clipboard",
+                      })
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to copy link to clipboard",
+                        variant: "destructive",
+                      })
+                    }
+                  }}
+                  className="bg-white text-black border border-gray-200 hover:bg-gray-50"
+                >
+                  Copy Link
+                </Button>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

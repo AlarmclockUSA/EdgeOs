@@ -18,45 +18,86 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'supervisor';
     }
 
-    // Allow read/write access to authenticated users for the 'companies' collection
-    match /companies/{companyId} {
-      allow read, write: if isAuthenticated();
+    // Helper function to check if the user belongs to the company
+    function belongsToCompany(companyName) {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyName == companyName;
+    }
+
+    // Companies collection rules
+    match /companies/{companyName} {
+      // Allow reading basic company info for signup verification
+      allow get: if true;
+      
+      // Allow reading full company data if user belongs to the company
+      allow list: if belongsToCompany(companyName);
+      
+      // Allow executives to update their company
+      allow update: if isExecutive() && belongsToCompany(companyName);
+      
+      // Allow creating new companies (for company setup)
+      allow create: if isAuthenticated();
     }
     
-    // Allow read/write access to authenticated users for the 'users' collection
-    // Allow executives to read all user documents
+    // Users collection rules
     match /users/{userId} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isExecutive());
-      allow write: if isAuthenticated() && request.auth.uid == userId;
+      allow create: if true;
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isExecutive() || isSupervisor());
+      allow update: if isAuthenticated() && (
+        request.auth.uid == userId || 
+        (isExecutive() && belongsToCompany(resource.data.companyName))
+      );
+      allow list: if isAuthenticated() && (isExecutive() || isSupervisor());
       
       // Allow users to read/write their own progress data
       match /progress/{progressType} {
-        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+        allow read, write: if isAuthenticated() && (
+          request.auth.uid == userId ||
+          isExecutive() ||
+          isSupervisor()
+        );
       }
     }
     
-    // Allow read/write access to authenticated users for the 'invites' collection
+    // Invites collection rules
     match /invites/{inviteId} {
-      allow read, write: if isAuthenticated();
+      allow read: if true; // Allow reading invite data for verification
+      allow create: if isExecutive(); // Only executives can create invites
+      allow delete: if isExecutive(); // Only executives can delete invites
     }
 
-    // Allow read access to authenticated users for the 'trainings' collection
-    // Allow write access to executives and supervisors
+    // Trainings collection rules
     match /trainings/{trainingId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && (isExecutive() || isSupervisor());
     }
 
+    // Worksheet rules - allow users to create and manage their own worksheets
     match /worksheets/{worksheetId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || 
+        isExecutive() || 
+        isSupervisor()
+      );
     }
 
     match /boldActions/{actionId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read, update: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId ||
+        isExecutive() ||
+        isSupervisor()
+      );
     }
 
     match /userProgress/{progressId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read, update: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId ||
+        isExecutive() ||
+        isSupervisor()
+      );
     }
   }
 }

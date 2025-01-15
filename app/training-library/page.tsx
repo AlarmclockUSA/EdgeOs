@@ -8,11 +8,9 @@ import { doc, setDoc, getDoc, Firestore } from 'firebase/firestore'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "@/components/ui/use-toast"
-import { CourseModal } from '@/components/course-modal'
 import { WorksheetModal } from '@/components/worksheet-modal'
-import { Video, FileText, CheckCircle, Clock, Search } from 'lucide-react'
+import { Video, Search, CheckCircle, Clock, FileText } from 'lucide-react'
 import { Progress } from "@/components/ui/progress"
 import { tribeApiFetch } from '@/lib/tribe-api'
 import Hls from 'hls.js'
@@ -68,7 +66,17 @@ const VideoPlayer = ({ url }: { url: string }) => {
       controls
       preload="none"
       playsInline
-    />
+      crossOrigin="anonymous"
+    >
+      <track
+        kind="subtitles"
+        label="English"
+        srcLang="en"
+        src=""
+        default
+      />
+      Your browser does not support the video tag.
+    </video>
   )
 }
 
@@ -76,18 +84,42 @@ const VideoModal = ({
   isOpen, 
   onClose, 
   url, 
-  title 
+  title,
+  isCompleted,
+  onMarkAsWatched
 }: { 
   isOpen: boolean
   onClose: () => void
   url: string
-  title: string 
+  title: string
+  isCompleted: boolean
+  onMarkAsWatched: () => void
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] p-0">
         <div className="aspect-video w-full">
           <VideoPlayer url={url} />
+        </div>
+        <div className="p-4 bg-white flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            {isCompleted ? (
+              <>
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                <span className="text-green-500">Watched</span>
+              </>
+            ) : (
+              <>
+                <Clock className="h-5 w-5 text-yellow-500" />
+                <span className="text-yellow-500">Not watched yet</span>
+              </>
+            )}
+          </div>
+          {!isCompleted && (
+            <Button onClick={onMarkAsWatched}>
+              Mark as Watched
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -104,7 +136,7 @@ export default function TrainingLibrary() {
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
   const [isWorksheetModalOpen, setIsWorksheetModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedVideo, setSelectedVideo] = useState<{ url: string; title: string } | null>(null)
+  const [selectedVideo, setSelectedVideo] = useState<{ url: string; title: string; id: string } | null>(null)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -158,36 +190,26 @@ export default function TrainingLibrary() {
 
         // Get featured image URL if available
         let featuredImage = null
-        if (item.featuredImageUrl) {
-          featuredImage = `https://edge.tribesocial.io/${item.featuredImageUrl}`
-          console.log('Featured image data:', {
-            itemId: item.id,
-            rawFeaturedImage: item.featuredImageUrl,
-            constructedUrl: featuredImage,
-            allImageFields: {
-              featuredImage: item.featuredImage,
-              featuredImageUrl: item.featuredImageUrl,
-              image: item.image,
-              imageUrl: item.imageUrl,
-              thumbnail: item.thumbnail,
-              thumbnailUrl: item.thumbnailUrl
-            }
-          })
-        } else {
-          console.log('No featured image for item:', {
-            itemId: item.id,
-            title: item.title,
-            availableFields: Object.keys(item),
-            imageRelatedFields: {
-              featuredImage: item.featuredImage,
-              featuredImageUrl: item.featuredImageUrl,
-              image: item.image,
-              imageUrl: item.imageUrl,
-              thumbnail: item.thumbnail,
-              thumbnailUrl: item.thumbnailUrl
-            }
-          })
+        if (item.featuredImage) {
+          featuredImage = `https://cdn.tribesocial.io/${item.featuredImage}`
+        } else if (item.coverImage) {
+          featuredImage = `https://cdn.tribesocial.io/${item.coverImage}`
+        } else if (item.imageUrl) {
+          featuredImage = item.imageUrl.startsWith('http') ? item.imageUrl : `https://cdn.tribesocial.io/${item.imageUrl}`
+        } else if (item.image) {
+          featuredImage = `https://cdn.tribesocial.io/${item.image}`
         }
+
+        console.log('Image data for item:', {
+          itemId: item.id,
+          title: item.title,
+          featuredImage: item.featuredImage,
+          coverImage: item.coverImage,
+          imageUrl: item.imageUrl,
+          image: item.image,
+          finalImageUrl: featuredImage,
+          availableFields: Object.keys(item)
+        })
 
         const transformedItem = {
           id: item.id.toString(),
@@ -254,46 +276,55 @@ export default function TrainingLibrary() {
     }
   }
 
-  const handleVideoComplete = async () => {
-    if (selectedTraining && user) {
-      try {
-        const progressRef = doc(db as Firestore, 'users', user.uid, 'progress', 'trainings')
-        await setDoc(progressRef, {
-          [selectedTraining.id]: {
-            ...userProgress[selectedTraining.id],
-            videoCompleted: true,
-            lastUpdated: new Date()
-          }
-        }, { merge: true })
+  const handleVideoClick = (training: Training) => {
+    if (training.videoUrl) {
+      setSelectedVideo({
+        url: training.videoUrl,
+        title: training.title,
+        id: training.id
+      })
+    }
+  }
 
-        // Track view in Tribe analytics
-        if (selectedTraining.tribeContentId) {
-          await tribeApiFetch('/analytics/views', {
-            method: 'POST',
-            body: { contentId: selectedTraining.tribeContentId }
-          })
+  const handleVideoComplete = async (trainingId: string) => {
+    if (!user) return
+
+    try {
+      // Update progress in Firestore
+      const progressRef = doc(db as Firestore, 'users', user.uid, 'progress', 'trainings')
+      await setDoc(progressRef, {
+        [trainingId]: {
+          ...userProgress[trainingId],
+          videoCompleted: true
         }
+      }, { merge: true })
 
-        setUserProgress(prev => ({
-          ...prev,
-          [selectedTraining.id]: {
-            ...prev[selectedTraining.id],
-            videoCompleted: true
-          }
-        }))
+      // Track view in Tribe analytics
+      await tribeApiFetch('/analytics/views', {
+        method: 'POST',
+        body: { contentId: trainingId }
+      })
 
-        toast({
-          title: "Video Completed",
-          description: "Your progress has been saved.",
-        })
-      } catch (error) {
-        console.error('Error marking video as completed:', error)
-        toast({
-          title: "Error",
-          description: "Failed to update progress. Please try again.",
-          variant: "destructive",
-        })
-      }
+      // Update local state
+      setUserProgress(prev => ({
+        ...prev,
+        [trainingId]: {
+          ...prev[trainingId],
+          videoCompleted: true
+        }
+      }))
+
+      toast({
+        title: "Video Marked as Watched",
+        description: "Your progress has been saved.",
+      })
+    } catch (error) {
+      console.error('Error marking video as completed:', error)
+      toast({
+        title: "Error",
+        description: "Failed to update progress. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -352,15 +383,6 @@ export default function TrainingLibrary() {
       training.description.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort(sortTrainings)
-
-  const handleVideoClick = (training: Training) => {
-    if (training.videoUrl) {
-      setSelectedVideo({
-        url: training.videoUrl,
-        title: training.title
-      })
-    }
-  }
 
   const renderCardView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -479,27 +501,15 @@ export default function TrainingLibrary() {
       )}
 
       {selectedTraining && (
-        <>
-          <CourseModal
-            isOpen={isVideoModalOpen}
-            onClose={() => {
-              setIsVideoModalOpen(false)
-              setSelectedTraining(null)
-            }}
-            course={selectedTraining}
-            nextTrainingDate={null}
-            onVideoComplete={handleVideoComplete}
-          />
-          <WorksheetModal
-            isOpen={isWorksheetModalOpen}
-            onClose={() => {
-              setIsWorksheetModalOpen(false)
-              setSelectedTraining(null)
-            }}
-            worksheetId={selectedTraining.id}
-            onSubmit={handleWorksheetSubmit}
-          />
-        </>
+        <WorksheetModal
+          isOpen={isWorksheetModalOpen}
+          onClose={() => {
+            setIsWorksheetModalOpen(false)
+            setSelectedTraining(null)
+          }}
+          worksheetId={selectedTraining.id}
+          onSubmit={handleWorksheetSubmit}
+        />
       )}
 
       {selectedVideo && (
@@ -508,6 +518,8 @@ export default function TrainingLibrary() {
           onClose={() => setSelectedVideo(null)}
           url={selectedVideo.url}
           title={selectedVideo.title}
+          isCompleted={userProgress[selectedVideo.id]?.videoCompleted || false}
+          onMarkAsWatched={() => handleVideoComplete(selectedVideo.id)}
         />
       )}
     </div>

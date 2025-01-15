@@ -16,6 +16,9 @@ export async function GET() {
         image: tribeContent.Contents[0].image,
         thumbnail: tribeContent.Contents[0].thumbnail,
         media: tribeContent.Contents[0].media,
+        coverImage: tribeContent.Contents[0].coverImage,
+        imageUrl: tribeContent.Contents[0].imageUrl,
+        rawItem: JSON.stringify(tribeContent.Contents[0])
       } : null
     })
     

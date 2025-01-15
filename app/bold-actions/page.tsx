@@ -18,7 +18,7 @@ interface BoldAction {
   action: string
   status: 'active' | 'completed'
   createdAt: Date
-  completedAt?: Date
+  completedAt: Date | { toDate: () => Date } | null
   timeframe: string
   actualTimeframe?: string
 }
@@ -106,22 +106,22 @@ export default function BoldActions() {
             <TableBody>
               {filteredActions.map((action) => (
                 <TableRow key={action.id}>
-                  <TableCell>{action.action}</TableCell>
+                  <TableCell className="text-gray-900">{action.action}</TableCell>
                   <TableCell>
                     {action.status === 'completed' ? (
                       <div className="flex items-center">
                         <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
-                        <span>Completed</span>
+                        <span className="text-gray-900">Completed</span>
                       </div>
                     ) : (
                       <div className="flex items-center">
                         <Clock className="mr-2 h-5 w-5 text-yellow-500" />
-                        <span>Active</span>
+                        <span className="text-gray-900">Active</span>
                       </div>
                     )}
                   </TableCell>
-                  <TableCell>{action.createdAt.toLocaleDateString()}</TableCell>
-                  <TableCell>{action.timeframe}</TableCell>
+                  <TableCell className="text-gray-900">{action.createdAt.toLocaleDateString()}</TableCell>
+                  <TableCell className="text-gray-900">{action.timeframe}</TableCell>
                   <TableCell>
                     <Button
                       onClick={() => {

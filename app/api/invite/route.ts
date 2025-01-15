@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/firebase'
-import { doc, setDoc, updateDoc, getDoc } from 'firebase/firestore'
+import { db } from '@/lib/firebase-admin'
 import { v4 as uuidv4 } from 'uuid'
 
 export async function POST(request: Request) {
@@ -15,14 +14,14 @@ export async function POST(request: Request) {
     const signupPath = role === 'supervisor' ? 'supervisorsignup' : 'teamsignup'
     const inviteLink = `${process.env.NEXT_PUBLIC_BASE_URL}/brilliant/${signupPath}?linkId=${linkId}`
 
-    const companyRef = doc(db, 'companies', companyName)
-    const companyDoc = await getDoc(companyRef)
+    const companyRef = db.collection('companies').doc(companyName)
+    const companyDoc = await companyRef.get()
 
-    if (!companyDoc.exists()) {
+    if (!companyDoc.exists) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 })
     }
 
-    const inviteLinks = companyDoc.data().inviteLinks || {}
+    const inviteLinks = companyDoc.data()?.inviteLinks || {}
     inviteLinks[role] = {
       linkId,
       url: inviteLink,
@@ -30,7 +29,7 @@ export async function POST(request: Request) {
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days expiration
     }
 
-    await updateDoc(companyRef, { inviteLinks })
+    await companyRef.update({ inviteLinks })
 
     return NextResponse.json({ inviteLink })
   } catch (error) {

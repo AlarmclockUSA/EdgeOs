@@ -40,7 +40,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(firebaseAuth as Auth, async (user) => {
       setUser(user)
       
-      if (user) {
+      // Check if we're on an auth page
+      const isAuthPage = window.location.pathname.includes('/signin') || 
+                        window.location.pathname.includes('/join-company') ||
+                        window.location.pathname.includes('/company-setup') ||
+                        window.location.pathname.includes('/teamsignup') ||
+                        window.location.pathname.includes('/supervisorsignup')
+
+      if (!user) {
+        setUserRole(null)
+        setCompanyId(null)
+        setCompanyName(null)
+        setPermissions([])
+        
+        // If not on an auth page, redirect to signin
+        if (!isAuthPage) {
+          router.push('/signin')
+        }
+      } else {
         try {
           const userDoc = await getDoc(doc(db as Firestore, 'users', user.uid))
           if (userDoc.exists()) {
@@ -51,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setCompanyName(userData.companyName || null)
 
             // If user has no company association, redirect to join company
-            if (!userData.companyName) {
+            if (!userData.companyName && !isAuthPage) {
               router.push('/join-company')
               return
             }
@@ -63,23 +80,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             })
 
             setPermissions(syncedRoles.permissions)
-
-            // Redirect to home if they have a company
-            router.push('/')
-          } else {
+          } else if (!isAuthPage) {
             // If user exists in Firebase Auth but not in Firestore, redirect to join company
             router.push('/join-company')
           }
         } catch (error) {
           console.error('Error fetching user data:', error)
-          router.push('/join-company')
+          if (!isAuthPage) {
+            router.push('/join-company')
+          }
         }
-      } else {
-        setUserRole(null)
-        setCompanyId(null)
-        setCompanyName(null)
-        setPermissions([])
-        router.push('/signin')
       }
       
       setLoading(false)

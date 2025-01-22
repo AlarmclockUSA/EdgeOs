@@ -284,27 +284,27 @@ export default function TrainingLibrary() {
     if (!user) return
 
     try {
+      // Store video ID before closing modal
+      const videoId = trainingId
+      
+      // Close the modal first
+      setSelectedVideo(null)
+
       // Update progress in Firestore
       const progressRef = doc(db as Firestore, 'users', user.uid, 'progress', 'trainings')
       await setDoc(progressRef, {
-        [trainingId]: {
-          ...userProgress[trainingId],
+        [videoId]: {
+          ...userProgress[videoId],
           videoCompleted: true,
           lastUpdated: new Date()
         }
       }, { merge: true })
 
-      // Track view in Tribe analytics
-      await tribeApiFetch('/analytics/views', {
-        method: 'POST',
-        body: { contentId: trainingId }
-      })
-
       // Update local state
       setUserProgress(prev => ({
         ...prev,
-        [trainingId]: {
-          ...prev[trainingId],
+        [videoId]: {
+          ...prev[videoId],
           videoCompleted: true,
           lastUpdated: new Date()
         }
@@ -316,9 +316,20 @@ export default function TrainingLibrary() {
       })
     } catch (error) {
       console.error('Error marking video as completed:', error)
+      
+      // Show error toast with more specific message
+      let errorMessage = "Failed to update progress. Please try again."
+      if (error instanceof Error) {
+        if (error.message.includes('permission-denied')) {
+          errorMessage = "You don't have permission to update this video's status."
+        } else if (error.message.includes('not-found')) {
+          errorMessage = "Could not find the video progress record."
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to update progress. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     }

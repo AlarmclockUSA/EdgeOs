@@ -394,43 +394,53 @@ export default function Dashboard() {
   const handleVideoComplete = useCallback(async () => {
     if (user && selectedVideo) {
       try {
-        // First update Firestore
+        // Store video ID before closing modal
+        const videoId = selectedVideo.id
+        
+        // Close the modal first
+        setSelectedVideo(null)
+
+        // Update Firestore
         const progressRef = doc(db, 'users', user.uid, 'progress', 'trainings')
         await setDoc(progressRef, {
-          [selectedVideo.id]: {
-            ...userProgress[selectedVideo.id],
-            videoCompleted: true
+          [videoId]: {
+            ...userProgress[videoId],
+            videoCompleted: true,
+            lastUpdated: new Date()
           }
         }, { merge: true })
 
-        // Then track view in Tribe analytics
-        await tribeApiFetch('/analytics/views', {
-          method: 'POST',
-          body: { contentId: selectedVideo.id }
-        })
-
-        // Then update local state
+        // Update local state
         setUserProgress(prev => ({
           ...prev,
-          [selectedVideo.id]: {
-            ...prev[selectedVideo.id],
-            videoCompleted: true
+          [videoId]: {
+            ...prev[videoId],
+            videoCompleted: true,
+            lastUpdated: new Date()
           }
         }))
 
-        // Show toast
+        // Show success toast
         toast({
           title: "Video Marked as Watched",
           description: "Your progress has been saved.",
         })
-
-        // Finally close the modal
-        setSelectedVideo(null)
       } catch (error) {
         console.error('Error marking video as completed:', error)
+        
+        // Show error toast with more specific message
+        let errorMessage = "Failed to update progress. Please try again."
+        if (error instanceof Error) {
+          if (error.message.includes('permission-denied')) {
+            errorMessage = "You don't have permission to update this video's status."
+          } else if (error.message.includes('not-found')) {
+            errorMessage = "Could not find the video progress record."
+          }
+        }
+        
         toast({
           title: "Error",
-          description: "Failed to update progress. Please try again.",
+          description: errorMessage,
           variant: "destructive",
         })
       }

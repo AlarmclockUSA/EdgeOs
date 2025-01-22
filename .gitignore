@@ -33,4 +33,4 @@ yarn-error.log*
 next-env.d.ts
 
 # Technical Documentation
-EdgeOS_LMS_Technical_Documentation.txt 
+EdgeOS_LMS_Technical_Documentation.txt service-account.json

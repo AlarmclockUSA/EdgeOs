@@ -66,7 +66,6 @@ function MobileMenu() {
       { name: 'Training Library', href: '/training-library', icon: Library },
       { name: 'Bold Actions', href: '/bold-actions', icon: Target },
       { name: 'My Team', href: '/supervisor', icon: Users },
-      ...(companyName === 'Brilliant Perspectives' ? [{ name: 'Admin', href: '/admin', icon: LayoutDashboard }] : []),
       { name: 'Account Settings', href: '/account', icon: Settings }
     ],
     executive: [
@@ -75,7 +74,6 @@ function MobileMenu() {
       { name: 'Bold Actions', href: '/bold-actions', icon: Target },
       { name: 'My Team', href: '/supervisor', icon: Users },
       { name: 'Executive Dashboard', href: '/executive', icon: Building },
-      ...(companyName === 'Brilliant Perspectives' ? [{ name: 'Admin', href: '/admin', icon: LayoutDashboard }] : []),
       { name: 'Company Settings', href: '/company-settings', icon: Cog },
       { name: 'Account Settings', href: '/account', icon: Settings }
     ]

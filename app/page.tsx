@@ -450,23 +450,22 @@ export default function Dashboard() {
   const handleWorksheetSubmit = useCallback(async (newBoldActionId: string) => {
     if (user && selectedTraining) {
       try {
-        const progressRef = doc(db, 'userProgress', `${user.uid}_${selectedTraining.id}`)
-        await updateDoc(progressRef, {
-          worksheetCompleted: true,
-          worksheetCompletionDate: new Date()
-        })
-
-        // Update user's completed worksheets count
-        const userRef = doc(db, 'users', user.uid)
-        await updateDoc(userRef, {
-          completedWorksheets: increment(1)
-        })
+        // Update progress in user's subcollection
+        const progressRef = doc(db, `users/${user.uid}/progress/trainings`)
+        const now = new Date()
+        await setDoc(progressRef, {
+          [selectedTraining.id]: {
+            worksheetCompleted: true,
+            lastUpdated: now
+          }
+        }, { merge: true })
 
         setUserProgress(prev => ({
           ...prev,
           [selectedTraining.id]: {
             ...prev[selectedTraining.id],
-            worksheetCompleted: true
+            worksheetCompleted: true,
+            lastUpdated: now
           }
         }))
 
@@ -799,9 +798,11 @@ export default function Dashboard() {
                               <p className="text-sm text-[#666666]">
                                 Started: {action.createdAt instanceof Date 
                                   ? action.createdAt.toLocaleDateString()
-                                  : action.createdAt && 'toDate' in action.createdAt
+                                  : typeof action.createdAt === 'object' && action.createdAt && 'toDate' in action.createdAt
                                     ? action.createdAt.toDate().toLocaleDateString()
-                                    : 'Date not available'}
+                                    : typeof action.createdAt === 'string'
+                                      ? new Date(action.createdAt).toLocaleDateString()
+                                      : 'Date not available'}
                               </p>
                             </div>
                             <Button

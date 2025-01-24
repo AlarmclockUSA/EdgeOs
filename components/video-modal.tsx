@@ -36,6 +36,9 @@ const VideoPlayer = ({ url }: { url: string }) => {
       preload="none"
       playsInline
       crossOrigin="anonymous"
+      disablePictureInPicture={false}
+      controlsList="nodownload"
+      allowFullScreen
     >
       <track
         kind="subtitles"

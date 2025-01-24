@@ -109,7 +109,7 @@ function BoldActionsList({ actions, status, onComplete }: {
   )
 }
 
-export default function BoldActionsPage() {
+export default function BoldActions() {
   const { user } = useAuth()
   const [boldActions, setBoldActions] = useState<BoldAction[]>([])
   const [loading, setLoading] = useState(true)
@@ -168,57 +168,65 @@ export default function BoldActionsPage() {
 
   return (
     <div>
-      <Card className="bg-white rounded-none border-0">
-        <CardHeader>
-          <CardTitle className="text-[#333333]">Bold Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex justify-center items-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin" />
-            </div>
-          ) : (
-            <Tabs defaultValue="active" className="w-full">
-              <TabsList className="bg-gray-100">
-                <TabsTrigger value="active" className="text-[#666666] data-[state=active]:text-[#333333] data-[state=active]:bg-white">Active ({activeActions.length})</TabsTrigger>
-                <TabsTrigger value="completed" className="text-[#666666] data-[state=active]:text-[#333333] data-[state=active]:bg-white">Completed ({completedActions.length})</TabsTrigger>
-              </TabsList>
-              <TabsContent value="active" className="mt-6">
-                <BoldActionsList 
-                  actions={activeActions} 
-                  status="active" 
-                  onComplete={handleComplete}
-                />
-              </TabsContent>
-              <TabsContent value="completed" className="mt-6">
-                <BoldActionsList 
-                  actions={completedActions} 
-                  status="completed" 
-                  onComplete={handleComplete}
-                />
-              </TabsContent>
-            </Tabs>
-          )}
-        </CardContent>
-      </Card>
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-[#3E5E17] to-[#527A1F] py-8">
+        <div className="px-8">
+          <h1 className="text-2xl font-semibold text-white">Bold Actions</h1>
+          <p className="text-white/80 mt-2">Track and manage your growth commitments</p>
+        </div>
+      </div>
 
-      {selectedAction && (
-        <BoldActionModal
-          isOpen={isModalOpen}
-          onClose={handleModalClose}
-          boldAction={{
-            id: selectedAction.id,
-            action: selectedAction.action,
-            timeframe: selectedAction.timeframe,
-            completedAt: selectedAction.completedAt as any,
-            createdAt: selectedAction.createdAt as any,
-            status: selectedAction.status,
-            actualTimeframe: selectedAction.actualTimeframe,
-            reflectionNotes: selectedAction.reflectionNotes
-          }}
-          onComplete={handleActionComplete}
-        />
-      )}
+      {/* Main Content */}
+      <div className="bg-white">
+        <Card className="bg-white rounded-none border-0">
+          <CardContent>
+            {loading ? (
+              <div className="flex justify-center items-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin" />
+              </div>
+            ) : (
+              <Tabs defaultValue="active" className="w-full">
+                <TabsList className="bg-gray-100">
+                  <TabsTrigger value="active" className="text-[#666666] data-[state=active]:text-[#333333] data-[state=active]:bg-white">Active ({activeActions.length})</TabsTrigger>
+                  <TabsTrigger value="completed" className="text-[#666666] data-[state=active]:text-[#333333] data-[state=active]:bg-white">Completed ({completedActions.length})</TabsTrigger>
+                </TabsList>
+                <TabsContent value="active" className="mt-6">
+                  <BoldActionsList 
+                    actions={activeActions} 
+                    status="active" 
+                    onComplete={handleComplete}
+                  />
+                </TabsContent>
+                <TabsContent value="completed" className="mt-6">
+                  <BoldActionsList 
+                    actions={completedActions} 
+                    status="completed" 
+                    onComplete={handleComplete}
+                  />
+                </TabsContent>
+              </Tabs>
+            )}
+          </CardContent>
+        </Card>
+
+        {selectedAction && (
+          <BoldActionModal
+            isOpen={isModalOpen}
+            onClose={handleModalClose}
+            boldAction={{
+              id: selectedAction.id,
+              action: selectedAction.action,
+              timeframe: selectedAction.timeframe,
+              completedAt: selectedAction.completedAt as any,
+              createdAt: selectedAction.createdAt as any,
+              status: selectedAction.status,
+              actualTimeframe: selectedAction.actualTimeframe,
+              reflectionNotes: selectedAction.reflectionNotes
+            }}
+            onComplete={handleActionComplete}
+          />
+        )}
+      </div>
     </div>
   )
 } 

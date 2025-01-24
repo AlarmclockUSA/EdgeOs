@@ -691,9 +691,9 @@ export default function Dashboard() {
         <div className="grid grid-cols-3 gap-8">
           {/* Welcome Card */}
           <Card className="bg-white text-[#333333] shadow-md">
-            <CardHeader className="p-4 sm:p-6">
-              <CardTitle className="text-xl sm:text-2xl font-semibold text-[#333333]">Welcome Back!</CardTitle>
-              <p className="text-muted-foreground">
+            <CardHeader className="p-4 sm:p-6 bg-gradient-to-r from-[#DD8D00] to-[#E6A533]">
+              <CardTitle className="text-xl sm:text-2xl font-semibold text-white">Welcome Back!</CardTitle>
+              <p className="text-white/80">
                 Where will your growth take you today?
               </p>
             </CardHeader>
@@ -701,15 +701,15 @@ export default function Dashboard() {
 
           {/* Bold Actions Card with Year-to-Date Progress */}
           <Card className="bg-white text-[#333333] shadow-md flex flex-col">
-            <CardHeader className="p-4 sm:p-6">
-              <CardTitle className="text-xl sm:text-2xl font-semibold text-[#333333]">Bold Actions</CardTitle>
+            <CardHeader className="p-4 sm:p-6 bg-gradient-to-r from-[#3E5E17] to-[#527A1F]">
+              <CardTitle className="text-xl sm:text-2xl font-semibold text-white">Bold Actions</CardTitle>
               {/* Year-to-Date Progress */}
               <div className="mt-4 space-y-2">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Year-to-Date Progress</span>
-                  <span className="font-medium">{completedBoldActionsYTD} Completed</span>
+                  <span className="text-white/80">Year-to-Date Progress</span>
+                  <span className="font-medium text-white">{completedBoldActionsYTD} Completed</span>
                 </div>
-                <Progress value={completedBoldActionsYTD * 10} className="h-2" />
+                <Progress value={completedBoldActionsYTD * 10} className="h-2 bg-white/20" />
               </div>
             </CardHeader>
             {boldActions.filter(action => action.status === 'active').length > 3 && (
@@ -748,6 +748,7 @@ export default function Dashboard() {
                                     completedAt: action.completedAt || null,
                                     createdAt: action.createdAt || null
                                   })
+                                  setIsBoldActionModalOpen(true)
                                 }}
                               >
                                 View
@@ -768,8 +769,8 @@ export default function Dashboard() {
 
           {/* Leaderboard Card */}
           <Card className="bg-white text-[#333333] shadow-md">
-            <CardHeader className="p-4 sm:p-6">
-              <CardTitle className="text-xl sm:text-2xl font-semibold text-[#333333]">Leaderboard</CardTitle>
+            <CardHeader className="p-4 sm:p-6 bg-gradient-to-r from-[#74A78E] to-[#8BBBA5]">
+              <CardTitle className="text-xl sm:text-2xl font-semibold text-white">Leaderboard</CardTitle>
             </CardHeader>
             <CardContent className="p-4 sm:p-6">
               <ScrollArea className="h-[300px]">

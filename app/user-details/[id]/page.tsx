@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -61,6 +61,7 @@ interface MeetingNote {
 }
 
 export default function UserDetailsPage({ params }: { params: { id: string } }) {
+  const unwrappedParams = React.use(params)
   const [user, setUser] = useState<any>(null)
   const [kpis, setKPIs] = useState<UserKPIs | null>(null)
   const [worksheets, setWorksheets] = useState<Worksheet[]>([])
@@ -78,11 +79,11 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!currentUser || !params.id) return
+      if (!currentUser || !unwrappedParams.id) return
       
       try {
         // Check if user has permission to view details
-        if (currentUserRole !== 'executive' && currentUserRole !== 'supervisor' && currentUser.uid !== params.id) {
+        if (currentUserRole !== 'executive' && currentUserRole !== 'supervisor' && currentUser.uid !== unwrappedParams.id) {
           toast({
             title: "Access Denied",
             description: "You do not have permission to view this user's details.",
@@ -93,7 +94,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
         }
 
         // Fetch user document
-        const userRef = doc(db, 'users', params.id)
+        const userRef = doc(db, 'users', unwrappedParams.id)
         const userDoc = await getDoc(userRef)
         
         if (!userDoc.exists()) {
@@ -112,7 +113,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
         setUser({ id: userDoc.id, ...userData })
         
         // Fetch bold actions
-        const boldActionsRef = collection(db, `users/${params.id}/boldActions`)
+        const boldActionsRef = collection(db, `users/${unwrappedParams.id}/boldActions`)
         const boldActionsQuery = query(
           boldActionsRef,
           orderBy('createdAt', 'desc')
@@ -142,7 +143,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
         })
         
         // Fetch trainings
-        const progressRef = doc(db, `users/${params.id}/progress/trainings`)
+        const progressRef = doc(db, `users/${unwrappedParams.id}/progress/trainings`)
         const progressDoc = await getDoc(progressRef)
         const progressData = progressDoc.exists() ? progressDoc.data() : {}
         
@@ -180,7 +181,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
         // Fetch worksheets
         const worksheetsQuery = query(
           collection(db, 'worksheets'),
-          where('userId', '==', params.id),
+          where('userId', '==', unwrappedParams.id),
           orderBy('completionDate', 'desc')
         )
         const worksheetsSnapshot = await getDocs(worksheetsQuery)
@@ -214,7 +215,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
     }
 
     fetchUserData()
-  }, [currentUser, params.id, router, currentUserRole])
+  }, [currentUser, unwrappedParams.id, router, currentUserRole])
 
   const handlePrevWorksheet = () => {
     setCurrentWorksheetIndex((prev) => (prev > 0 ? prev - 1 : prev))
@@ -237,7 +238,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
           newMeetingNote.expectedTimeframe = newExpectedTimeframe;
         }
 
-        const userRef = doc(db, 'users', params.id)
+        const userRef = doc(db, 'users', unwrappedParams.id)
         await updateDoc(userRef, {
           meetingNotes: arrayUnion(newMeetingNote)
         })

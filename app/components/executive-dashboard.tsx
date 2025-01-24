@@ -34,6 +34,14 @@ interface User {
   latestTraining?: Training
 }
 
+const formatDate = (dateValue: any): Date => {
+  if (!dateValue) return new Date();
+  if (dateValue instanceof Date) return dateValue;
+  if (dateValue.toDate && typeof dateValue.toDate === 'function') return dateValue.toDate();
+  if (dateValue.seconds) return new Date(dateValue.seconds * 1000);
+  return new Date(dateValue);
+};
+
 export default function ExecutiveDashboard() {
   const { userRole } = useAuth()
   const router = useRouter()
@@ -82,7 +90,7 @@ export default function ExecutiveDashboard() {
                   id: boldActionDoc.id,
                   action: boldActionData.action,
                   status: boldActionData.status,
-                  createdAt: boldActionData.createdAt?.toDate(),
+                  createdAt: formatDate(boldActionData.createdAt),
                   timeframe: boldActionData.timeframe
                 }
               }

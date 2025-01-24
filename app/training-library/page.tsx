@@ -498,54 +498,62 @@ export default function TrainingLibrary() {
   )
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-bold mb-6 text-[#333333]">Training Library</h1>
-      
-      <div className="mb-6">
-        <div className="relative w-full max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <Input
-            type="text"
-            placeholder="Search trainings..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 w-full bg-white text-gray-900 border border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-          />
+    <div>
+      {/* Hero Section */}
+      <div className="sticky top-0 z-10 bg-gradient-to-r from-[#0056D2] to-[#EAF4FE] py-8">
+        <div className="px-8">
+          <h1 className="text-2xl font-semibold text-white">Learning Library</h1>
+          <p className="text-white/80 mt-2">Explore and complete your training modules</p>
+          <div className="mt-6 max-w-md">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search trainings..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-full bg-white text-gray-900 border-0 focus:ring-2 focus:ring-white"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      ) : filteredTrainings.length > 0 ? (
-        renderCardView()
-      ) : (
-        <p className="text-center text-muted-foreground">No trainings found.</p>
-      )}
+      {/* Main Content */}
+      <div className="p-8">
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        ) : filteredTrainings.length > 0 ? (
+          renderCardView()
+        ) : (
+          <p className="text-center text-muted-foreground">No trainings found.</p>
+        )}
 
-      {selectedTraining && (
-        <WorksheetModal
-          isOpen={isWorksheetModalOpen}
-          onClose={() => {
-            setIsWorksheetModalOpen(false)
-            setSelectedTraining(null)
-          }}
-          worksheetId={selectedTraining.id}
-          onSubmit={handleWorksheetSubmit}
-        />
-      )}
+        {selectedTraining && (
+          <WorksheetModal
+            isOpen={isWorksheetModalOpen}
+            onClose={() => {
+              setIsWorksheetModalOpen(false)
+              setSelectedTraining(null)
+            }}
+            worksheetId={selectedTraining.id}
+            onSubmit={handleWorksheetSubmit}
+          />
+        )}
 
-      {selectedVideo && (
-        <VideoModal
-          isOpen={!!selectedVideo}
-          onClose={() => setSelectedVideo(null)}
-          url={selectedVideo.url}
-          title={selectedVideo.title}
-          isCompleted={userProgress[selectedVideo.id]?.videoCompleted || false}
-          onMarkAsWatched={() => handleVideoComplete(selectedVideo.id)}
-        />
-      )}
+        {selectedVideo && (
+          <VideoModal
+            isOpen={!!selectedVideo}
+            onClose={() => setSelectedVideo(null)}
+            url={selectedVideo.url}
+            title={selectedVideo.title}
+            isCompleted={userProgress[selectedVideo.id]?.videoCompleted || false}
+            onMarkAsWatched={() => handleVideoComplete(selectedVideo.id)}
+          />
+        )}
+      </div>
     </div>
   )
 }

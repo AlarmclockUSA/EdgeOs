@@ -249,52 +249,106 @@ function CompanySettings() {
   const supervisorLink = authCompanyName ? `${window.location.origin}/brilliant/supervisorsignup?company=${encodeURIComponent(authCompanyName)}` : ''
 
   return (
-    <div className="container mx-auto p-6 space-y-6 bg-white">
-      <h1 className="text-3xl font-bold mb-6 text-black">Company Settings</h1>
-
-      <Card className="bg-white">
-        <CardHeader className="border-b">
-          <CardTitle className="text-black">Update Company Information</CardTitle>
+    <div className="pt-8">
+      <Card className="bg-white rounded-none border-0">
+        <CardHeader>
+          <CardTitle className="text-[#333333]">Company Settings</CardTitle>
+          <p className="text-[#666666] mt-1.5">
+            Manage your company information and access settings.
+          </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleUpdateCompany} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="companyName" className="text-black">Company Name</Label>
+              <Label htmlFor="companyName" className="text-[#333333]">Company Name</Label>
               <Input
                 id="companyName"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 required
-                className="bg-white text-black border-gray-200"
+                className="bg-white text-[#333333] border-gray-200"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="companySize" className="text-black">Company Size</Label>
+              <Label htmlFor="companySize" className="text-[#333333]">Company Size</Label>
               <Input
                 id="companySize"
                 type="number"
                 value={companySize}
                 onChange={(e) => setCompanySize(e.target.value)}
                 required
-                className="bg-white text-black border-gray-200"
+                className="bg-white text-[#333333] border-gray-200"
               />
             </div>
-            <Button type="submit" className="bg-white text-black border border-gray-200 hover:bg-gray-50">
+            <Button 
+              type="submit" 
+              className="bg-white text-[#333333] border-gray-200 hover:bg-gray-50"
+              variant="outline"
+            >
               Update Company
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      <Card className="bg-white">
-        <CardHeader className="border-b">
-          <CardTitle className="text-black">User Management</CardTitle>
+      <Card className="bg-white rounded-none border-0 mt-8">
+        <CardHeader>
+          <CardTitle className="text-[#333333]">Invite Links</CardTitle>
+          <p className="text-[#666666] mt-1.5">
+            Generate and manage invite links for team members and supervisors.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label className="text-[#333333]">Team Member Invite Link</Label>
+            <div className="flex gap-2">
+              <Input
+                value={teamMemberLink}
+                readOnly
+                className="bg-white text-[#333333] border-gray-200 flex-1"
+              />
+              <Button
+                onClick={() => handleCopyLink(teamMemberLink)}
+                variant="outline"
+                className="bg-white text-[#333333] border-gray-200 hover:bg-gray-50"
+              >
+                Copy
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-[#333333]">Supervisor Invite Link</Label>
+            <div className="flex gap-2">
+              <Input
+                value={supervisorLink}
+                readOnly
+                className="bg-white text-[#333333] border-gray-200 flex-1"
+              />
+              <Button
+                onClick={() => handleCopyLink(supervisorLink)}
+                variant="outline"
+                className="bg-white text-[#333333] border-gray-200 hover:bg-gray-50"
+              >
+                Copy
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-white rounded-none border-0 mt-8">
+        <CardHeader>
+          <CardTitle className="text-[#333333]">User Management</CardTitle>
+          <p className="text-[#666666] mt-1.5">
+            Manage user roles and supervisor assignments.
+          </p>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="flex items-center space-x-4">
               <Select value={batchRole} onValueChange={setBatchRole}>
-                <SelectTrigger className="w-[200px] bg-white text-black border-gray-200">
+                <SelectTrigger className="w-[200px] bg-white text-[#333333] border-gray-200">
                   <SelectValue placeholder="Select role..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -305,7 +359,7 @@ function CompanySettings() {
               </Select>
 
               <Select value={batchSupervisor} onValueChange={setBatchSupervisor}>
-                <SelectTrigger className="w-[200px] bg-white text-black border-gray-200">
+                <SelectTrigger className="w-[200px] bg-white text-[#333333] border-gray-200">
                   <SelectValue placeholder="Select supervisor..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -317,9 +371,10 @@ function CompanySettings() {
                 </SelectContent>
               </Select>
 
-              <Button 
+              <Button
                 onClick={handleBatchUpdate}
-                className="bg-white text-black border border-gray-200 hover:bg-gray-50"
+                variant="outline"
+                className="bg-white text-[#333333] border-gray-200 hover:bg-gray-50"
               >
                 Update Selected
               </Button>
@@ -327,33 +382,33 @@ function CompanySettings() {
 
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50">
+                <TableRow className="border-gray-200">
                   <TableHead className="w-12">
                     <Checkbox
                       checked={users.length > 0 && users.every(user => selectedUsers[user.id])}
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
-                  <TableHead className="text-black">Name</TableHead>
-                  <TableHead className="text-black">Role</TableHead>
-                  <TableHead className="text-black">Supervisor</TableHead>
+                  <TableHead className="text-[#333333]">Name</TableHead>
+                  <TableHead className="text-[#333333]">Role</TableHead>
+                  <TableHead className="text-[#333333]">Supervisor</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users.map(user => (
-                  <TableRow key={user.id} className="hover:bg-gray-50">
+                  <TableRow key={user.id} className="border-gray-200">
                     <TableCell>
                       <Checkbox
                         checked={selectedUsers[user.id] || false}
                         onCheckedChange={() => handleSelectUser(user.id)}
                       />
                     </TableCell>
-                    <TableCell className="text-black">
+                    <TableCell className="text-[#333333] font-medium">
                       {user.firstName} {user.lastName}
                     </TableCell>
                     <TableCell>
                       <Select value={user.role} onValueChange={(value) => handleRoleChange(user.id, value)}>
-                        <SelectTrigger className="w-[140px] bg-white text-black border-gray-200">
+                        <SelectTrigger className="w-[140px] bg-white text-[#333333] border-gray-200">
                           <SelectValue>{user.role}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
@@ -369,7 +424,7 @@ function CompanySettings() {
                         onValueChange={(value) => handleSupervisorChange(user.id, value)}
                         disabled={user.role === 'executive'}
                       >
-                        <SelectTrigger className="w-[200px] bg-white text-black border-gray-200">
+                        <SelectTrigger className="w-[200px] bg-white text-[#333333] border-gray-200">
                           <SelectValue>
                             {(() => {
                               const supervisor = supervisors.find(s => s.id === user.supervisorId)
@@ -392,78 +447,6 @@ function CompanySettings() {
                 ))}
               </TableBody>
             </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-white">
-        <CardHeader className="border-b">
-          <CardTitle className="text-black">Join Links</CardTitle>
-          <CardDescription>Share these links with new team members and supervisors</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-medium mb-2">Team Member Join Link</h3>
-              <div className="flex items-center gap-4">
-                <Input 
-                  readOnly 
-                  value={teamMemberLink}
-                  className="bg-white text-black border-gray-200"
-                />
-                <Button 
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(teamMemberLink)
-                      toast({
-                        title: "Link Copied",
-                        description: "Team member join link has been copied to clipboard",
-                      })
-                    } catch (error) {
-                      toast({
-                        title: "Error",
-                        description: "Failed to copy link to clipboard",
-                        variant: "destructive",
-                      })
-                    }
-                  }}
-                  className="bg-white text-black border border-gray-200 hover:bg-gray-50"
-                >
-                  Copy Link
-                </Button>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-medium mb-2">Supervisor Join Link</h3>
-              <div className="flex items-center gap-4">
-                <Input 
-                  readOnly 
-                  value={supervisorLink}
-                  className="bg-white text-black border-gray-200"
-                />
-                <Button 
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(supervisorLink)
-                      toast({
-                        title: "Link Copied",
-                        description: "Supervisor join link has been copied to clipboard",
-                      })
-                    } catch (error) {
-                      toast({
-                        title: "Error",
-                        description: "Failed to copy link to clipboard",
-                        variant: "destructive",
-                      })
-                    }
-                  }}
-                  className="bg-white text-black border border-gray-200 hover:bg-gray-50"
-                >
-                  Copy Link
-                </Button>
-              </div>
-            </div>
           </div>
         </CardContent>
       </Card>

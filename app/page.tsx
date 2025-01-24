@@ -32,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { auth } from '@/lib/firebase'
+import { VideoModule } from '@/components/video-module'
 
 interface Training {
   id: string
@@ -450,23 +451,22 @@ export default function Dashboard() {
   const handleWorksheetSubmit = useCallback(async (newBoldActionId: string) => {
     if (user && selectedTraining) {
       try {
-        const progressRef = doc(db, 'userProgress', `${user.uid}_${selectedTraining.id}`)
-        await updateDoc(progressRef, {
-          worksheetCompleted: true,
-          worksheetCompletionDate: new Date()
-        })
-
-        // Update user's completed worksheets count
-        const userRef = doc(db, 'users', user.uid)
-        await updateDoc(userRef, {
-          completedWorksheets: increment(1)
-        })
+        // Update progress in user's subcollection
+        const progressRef = doc(db, `users/${user.uid}/progress/trainings`)
+        const now = new Date()
+        await setDoc(progressRef, {
+          [selectedTraining.id]: {
+            worksheetCompleted: true,
+            lastUpdated: now
+          }
+        }, { merge: true })
 
         setUserProgress(prev => ({
           ...prev,
           [selectedTraining.id]: {
             ...prev[selectedTraining.id],
-            worksheetCompleted: true
+            worksheetCompleted: true,
+            lastUpdated: now
           }
         }))
 
@@ -667,275 +667,153 @@ export default function Dashboard() {
   })
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 space-y-6 sm:space-y-8 text-[#333333]">
-      <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <h1 className="text-2xl sm:text-4xl font-bold text-white">My Learning Dashboard</h1>
-      </div>
-
-      {/* Next Training Card */}
+    <div>
+      {/* Video Module at the top - completely flush */}
       {currentTraining && (
-        <Card className="flex flex-col md:flex-row bg-white border-0">
-          <div 
-            className="w-full md:w-1/2 aspect-video bg-muted rounded-t-lg md:rounded-l-lg md:rounded-tr-none cursor-pointer overflow-hidden"
-            onClick={() => handleVideoClick(currentTraining)}
-          >
-            {currentTraining.featuredImage ? (
-              <img 
-                src={currentTraining.featuredImage} 
-                alt={currentTraining.title}
-                className="w-full h-full object-cover hover:opacity-90 transition-opacity"
-              />
-            ) : currentTraining.videoUrl ? (
-              <div className="w-full h-full flex items-center justify-center bg-black/5 hover:bg-black/10 transition-colors">
-                <Video className="h-12 w-12 text-muted-foreground" />
-              </div>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Video className="h-12 w-12 text-muted-foreground" />
-              </div>
-            )}
-          </div>
-          <div className="w-full md:w-1/2 p-4 md:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg sm:text-xl text-gray-900 line-clamp-2">{currentTraining.title}</h2>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handlePreviousTraining}
-                  disabled={currentTrainingIndex === 0}
-                  className="flex-shrink-0"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleNextTraining}
-                  disabled={currentTrainingIndex === trainings.length - 1}
-                  className="flex-shrink-0"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            <div className="text-sm text-gray-600 max-h-[80px] sm:max-h-[100px] overflow-y-auto mb-4">
-              <div className="line-clamp-3 sm:line-clamp-5">
-                {currentTraining.description}
-              </div>
-            </div>
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">{currentTraining.trainingDate.toLocaleDateString()}</p>
-              <Progress value={((progress?.videoCompleted ? 1 : 0) + (progress?.worksheetCompleted ? 1 : 0)) * 50} className="w-full" />
-              <div className="space-y-2">
-                <div className="flex items-center">
-                  <Video className={`mr-2 h-4 w-4 ${progress?.videoCompleted ? 'text-green-500' : 'text-gray-400'}`} />
-                  <span className={`text-sm ${progress?.videoCompleted ? 'text-green-500' : 'text-gray-400'}`}>
-                    {progress?.videoCompleted ? 'Video Completed' : 'Video Not Watched'}
-                  </span>
-                </div>
-                <div className="flex items-center">
-                  <FileText className={`mr-2 h-4 w-4 ${progress?.worksheetCompleted ? 'text-green-500' : 'text-gray-400'}`} />
-                  <span className={`text-sm ${progress?.worksheetCompleted ? 'text-green-500' : 'text-gray-400'}`}>
-                    {progress?.worksheetCompleted ? 'Worksheet Completed' : 'Worksheet Not Submitted'}
-                  </span>
-                </div>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2 w-full">
-                {currentTraining.videoUrl && (
-                  <Button
-                    className="w-full sm:flex-1"
-                    onClick={() => handleVideoClick(currentTraining)}
-                  >
-                    <Video className="mr-2 h-4 w-4" />
-                    {progress?.videoCompleted ? 'Rewatch' : 'Watch'}
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  className="w-full sm:flex-1"
-                  onClick={() => handleOpenWorksheet(currentTraining)}
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  {progress?.worksheetCompleted ? 'Review' : 'Complete'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Card>
+        <VideoModule 
+          title={currentTraining.title}
+          description={currentTraining.description}
+          date={currentTraining.date}
+          progress={((progress?.videoCompleted ? 1 : 0) + (progress?.worksheetCompleted ? 1 : 0)) * 50}
+          videoWatched={progress?.videoCompleted || false}
+          worksheetCompleted={progress?.worksheetCompleted || false}
+          onWatch={() => handleVideoClick(currentTraining)}
+          onReview={() => handleOpenWorksheet(currentTraining)}
+          onPrevious={handlePreviousTraining}
+          onNext={handleNextTraining}
+          thumbnailUrl={currentTraining.featuredImage}
+        />
       )}
 
-      {/* Bold Actions and Year-to-Date Progress */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
-        {/* Bold Actions Card */}
-        <Card className="bg-white text-[#333333] shadow-md flex flex-col">
-          <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="text-xl sm:text-2xl font-semibold text-[#333333]">Bold Actions</CardTitle>
-          </CardHeader>
-          {boldActions.filter(action => action.status === 'active').length > 3 && (
-            <div className="px-4 sm:px-6 py-2 text-red-700">
-              You have more than three active bold actions, take a moment and review them.
-            </div>
-          )}
-          <CardContent className="flex-grow p-4 sm:p-6">
-            <ScrollArea className="h-full">
-              {isBoldActionsLoading ? (
-                <div className="flex justify-center items-center h-full">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : boldActions.length > 0 ? (
-                <div className="space-y-6">
-                  {/* Active Bold Actions */}
-                  <div>
-                    <h3 className="font-semibold text-lg mb-3">Current</h3>
-                    <ul className="space-y-4">
-                      {boldActions
-                        .filter(action => action.status === 'active')
-                        .map((action) => (
-                          <li key={action.id} className="flex items-center justify-between space-x-2 py-2">
-                            <div className="flex-grow">
-                              <p className="font-medium text-base text-[#333333]">{action.action}</p>
-                              <p className="text-sm text-[#666666]">Timeframe: {action.timeframe}</p>
-                              <p className="text-sm text-[#666666]">
-                                Started: {action.createdAt instanceof Date 
-                                  ? action.createdAt.toLocaleDateString()
-                                  : action.createdAt && 'toDate' in action.createdAt
-                                    ? action.createdAt.toDate().toLocaleDateString()
-                                    : 'Date not available'}
-                              </p>
-                            </div>
-                            <Button
-                              className="bg-[#0056D2] text-white hover:bg-[#EAF4FE] hover:text-[#0056D2]"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setIsBoldActionModalOpen(true)
-                                setBoldActionToView({
-                                  ...action,
-                                  completedAt: action.completedAt || null,
-                                  createdAt: action.createdAt || null
-                                })
-                              }}
-                            >
-                              <Info className="w-4 h-4 mr-2" />
-                              View
-                            </Button>
-                          </li>
-                        ))}
-                    </ul>
-                  </div>
-                  
-                  {/* Completed Bold Actions */}
-                  <div>
-                    <h3 className="font-semibold text-lg mb-3">Recently Completed</h3>
-                    <ul className="space-y-4">
-                      {boldActions
-                        .filter(action => action.status === 'completed')
-                        .slice(0, 5) // Show only the 5 most recent completed actions
-                        .map((action) => (
-                          <li key={action.id} className="flex items-center justify-between space-x-2 py-2">
-                            <div className="flex-grow">
-                              <p className="font-medium text-base text-[#333333]">{action.action}</p>
-                              <p className="text-sm text-[#666666]">
-                                Completed: {action.completedAt instanceof Date 
-                                  ? action.completedAt.toLocaleDateString()
-                                  : action.completedAt && 'toDate' in action.completedAt
-                                    ? action.completedAt.toDate().toLocaleDateString()
-                                    : 'Date not available'}
-                              </p>
-                            </div>
-                            <Button
-                              className="bg-[#0056D2] text-white hover:bg-[#EAF4FE] hover:text-[#0056D2]"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setIsBoldActionModalOpen(true)
-                                setBoldActionToView({
-                                  ...action,
-                                  completedAt: action.completedAt || null,
-                                  createdAt: action.createdAt || null
-                                })
-                              }}
-                            >
-                              <Info className="w-4 h-4 mr-2" />
-                              View
-                            </Button>
-                          </li>
-                        ))}
-                    </ul>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-[#666666]">No bold actions found. Complete a worksheet to set a new Bold Action.</p>
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
+      {/* Rest of content with padding */}
+      <div className="p-8">
+        {/* Three Column Grid */}
+        <div className="grid grid-cols-3 gap-8">
+          {/* Welcome Card */}
+          <Card className="bg-white text-[#333333] shadow-md">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-xl sm:text-2xl font-semibold text-[#333333]">Welcome Back!</CardTitle>
+              <p className="text-muted-foreground">
+                Where will your growth take you today?
+              </p>
+            </CardHeader>
+          </Card>
 
-        {/* Bold Actions This Year Card */}
-        <Card className="bg-white text-[#333333] shadow-md">
-          <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="text-xl sm:text-2xl font-semibold text-[#333333]">Bold Actions This Year</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 p-4 sm:p-6">
-            <div className="text-3xl sm:text-4xl font-bold text-[#333333]">{completedBoldActionsYTD}</div>
-            <p className="text-sm sm:text-base text-[#666666]">Total Bold Actions completed this year</p>
-            <Progress 
-              value={(completedBoldActionsYTD / 48) * 100} 
-              className="h-2 bg-gradient-to-r from-[#1EB6A6] to-[#0056D2]"
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Leaderboard Card */}
-      <Card className="bg-white text-[#333333] shadow-md relative overflow-hidden">
-        <CardHeader className="relative z-10 p-4 sm:p-6">
-          <CardTitle className="text-xl sm:text-2xl font-semibold text-[#333333]">Leaderboard</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 sm:space-y-6 relative z-10 p-4 sm:p-6">
-          <div className="space-y-4">
-            <div className="space-y-3">
-              {loading ? (
-                // Skeleton loader for leaderboard
-                Array(3).fill(0).map((_, index) => (
-                  <div key={index} className="flex items-center justify-between animate-pulse">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-6 h-6 bg-gray-300 rounded-full"></div>
-                      <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
-                      <div className="w-24 h-4 bg-gray-300 rounded"></div>
-                    </div>
-                    <div className="w-16 h-4 bg-gray-300 rounded"></div>
+          {/* Bold Actions Card with Year-to-Date Progress */}
+          <Card className="bg-white text-[#333333] shadow-md flex flex-col">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-xl sm:text-2xl font-semibold text-[#333333]">Bold Actions</CardTitle>
+              {/* Year-to-Date Progress */}
+              <div className="mt-4 space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Year-to-Date Progress</span>
+                  <span className="font-medium">{completedBoldActionsYTD} Completed</span>
+                </div>
+                <Progress value={completedBoldActionsYTD * 10} className="h-2" />
+              </div>
+            </CardHeader>
+            {boldActions.filter(action => action.status === 'active').length > 3 && (
+              <div className="px-4 sm:px-6 py-2 text-red-700">
+                You have more than three active bold actions, take a moment and review them.
+              </div>
+            )}
+            <CardContent className="flex-grow p-4 sm:p-6">
+              <ScrollArea className="h-[300px]">
+                {isBoldActionsLoading ? (
+                  <div className="flex justify-center items-center h-full">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
-                ))
-              ) : (
-                // Existing leaderboard content
-                leaderboard.length > 0 ? (
-                  leaderboard.map((leader, index) => (
-                    <div key={leader.name} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="flex items-center justify-center w-6 h-6">
-                          {index === 0 && <Trophy className="h-5 w-5 text-[#FFC857]" />}
-                          {index === 1 && <Star className="h-5 w-5 text-[#C0C0C0]" />}
-                          {index === 2 && <Star className="h-5 w-5 text-[#CD7F32]" />}
-                        </div>
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={leader.avatar} alt={leader.name} />
-                          <AvatarFallback>{leader.name[0]}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium text-base text-[#333333]">{leader.name}</span>
-                      </div>
-                      <span className="font-semibold text-base text-[#333333]">{leader.score} Bold Actions</span>
+                ) : boldActions.length > 0 ? (
+                  <div className="space-y-6">
+                    {/* Active Bold Actions */}
+                    <div>
+                      <h3 className="font-semibold text-lg mb-3">Current</h3>
+                      <ul className="space-y-4">
+                        {boldActions
+                          .filter(action => action.status === 'active')
+                          .map((action) => (
+                            <li key={action.id} className="flex items-center justify-between space-x-2 py-2">
+                              <div className="flex-grow">
+                                <p className="font-medium text-base text-[#333333]">{action.action}</p>
+                                <p className="text-sm text-[#666666]">
+                                  Due: {action.timeframe}
+                                </p>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setBoldActionToView({
+                                    ...action,
+                                    completedAt: action.completedAt || null,
+                                    createdAt: action.createdAt || null
+                                  })
+                                }}
+                              >
+                                View
+                              </Button>
+                            </li>
+                          ))}
+                      </ul>
                     </div>
-                  ))
+                  </div>
                 ) : (
-                  <p className="text-sm text-[#666666]">No bold actions completed yet. Be the first to top the leaderboard!</p>
-                )
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+                  <div className="text-center py-8 text-gray-500">
+                    No bold actions found
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          {/* Leaderboard Card */}
+          <Card className="bg-white text-[#333333] shadow-md">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-xl sm:text-2xl font-semibold text-[#333333]">Leaderboard</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6">
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-4">
+                  {loading ? (
+                    Array(3).fill(0).map((_, index) => (
+                      <div key={index} className="flex items-center justify-between animate-pulse">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-6 h-6 bg-gray-300 rounded-full"></div>
+                          <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
+                          <div className="w-24 h-4 bg-gray-300 rounded"></div>
+                        </div>
+                        <div className="w-16 h-4 bg-gray-300 rounded"></div>
+                      </div>
+                    ))
+                  ) : leaderboard.length > 0 ? (
+                    leaderboard.map((leader, index) => (
+                      <div key={leader.name} className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="flex items-center justify-center w-6 h-6">
+                            {index === 0 && <Trophy className="h-5 w-5 text-[#FFC857]" />}
+                            {index === 1 && <Star className="h-5 w-5 text-[#C0C0C0]" />}
+                            {index === 2 && <Star className="h-5 w-5 text-[#CD7F32]" />}
+                          </div>
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={leader.avatar} alt={leader.name} />
+                            <AvatarFallback>{leader.name[0]}</AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium text-base text-[#333333]">{leader.name}</span>
+                        </div>
+                        <span className="font-semibold text-base text-[#333333]">{leader.score} Bold Actions</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      No bold actions completed yet
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {selectedVideo && (
         <VideoModal

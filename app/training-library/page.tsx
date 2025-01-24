@@ -383,7 +383,23 @@ export default function TrainingLibrary() {
   }
 
   const sortTrainings = (a: Training, b: Training) => {
-    return a.trainingDate.getTime() - b.trainingDate.getTime()
+    const getDateValue = (date: Date | string | { toDate: () => Date } | { seconds: number }) => {
+      if (date instanceof Date) {
+        return date.getTime()
+      }
+      if (typeof date === 'string') {
+        return new Date(date).getTime()
+      }
+      if ('toDate' in date && typeof date.toDate === 'function') {
+        return date.toDate().getTime()
+      }
+      if ('seconds' in date) {
+        return date.seconds * 1000
+      }
+      return 0
+    }
+    
+    return getDateValue(a.trainingDate) - getDateValue(b.trainingDate)
   }
 
   const filteredTrainings = trainings
@@ -483,7 +499,7 @@ export default function TrainingLibrary() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-bold mb-6">Training Library</h1>
+      <h1 className="text-3xl font-bold mb-6 text-[#333333]">Training Library</h1>
       
       <div className="mb-6">
         <div className="relative w-full max-w-md">

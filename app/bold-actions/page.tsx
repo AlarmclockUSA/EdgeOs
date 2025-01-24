@@ -55,7 +55,7 @@ function BoldActionsList({ actions, status, onComplete }: {
 }) {
   if (actions.length === 0) {
     return (
-      <div className="text-muted-foreground text-center py-8">
+      <div className="text-[#666666] text-center py-8">
         No {status} bold actions found
       </div>
     )
@@ -64,29 +64,29 @@ function BoldActionsList({ actions, status, onComplete }: {
   return (
     <div className="space-y-4">
       {actions.map((action) => (
-        <Card key={action.id}>
+        <Card key={action.id} className="bg-white border border-gray-200">
           <CardContent className="p-4">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
-                <h3 className="font-medium">{action.action}</h3>
-                <div className="text-sm text-muted-foreground">
+                <h3 className="font-medium text-[#333333]">{action.action}</h3>
+                <div className="text-sm text-[#666666]">
                   <p>Created: {formatDate(action.createdAt)}</p>
                   {action.completedAt && (
                     <p>Completed: {formatDate(action.completedAt)}</p>
                   )}
                 </div>
                 {action.actualTimeframe && (
-                  <p className="text-sm">Actual Timeframe: {action.actualTimeframe}</p>
+                  <p className="text-sm text-[#666666]">Actual Timeframe: {action.actualTimeframe}</p>
                 )}
                 {action.reflectionNotes && (
                   <div className="text-sm">
-                    <p className="font-medium">Reflection Notes:</p>
-                    <p className="text-muted-foreground whitespace-pre-wrap">{action.reflectionNotes}</p>
+                    <p className="font-medium text-[#333333]">Reflection Notes:</p>
+                    <p className="text-[#666666] whitespace-pre-wrap">{action.reflectionNotes}</p>
                   </div>
                 )}
               </div>
               <div className="text-right space-y-2">
-                <span className="text-sm font-medium block">
+                <span className="text-sm font-medium block text-[#333333]">
                   Timeframe: {action.timeframe}
                 </span>
                 {status === 'active' && (
@@ -167,10 +167,10 @@ export default function BoldActionsPage() {
   const completedActions = boldActions.filter(action => action.status === 'completed')
 
   return (
-    <div className="container mx-auto py-6">
-      <Card>
+    <div>
+      <Card className="bg-white rounded-none border-0">
         <CardHeader>
-          <CardTitle>Bold Actions</CardTitle>
+          <CardTitle className="text-[#333333]">Bold Actions</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -179,9 +179,9 @@ export default function BoldActionsPage() {
             </div>
           ) : (
             <Tabs defaultValue="active" className="w-full">
-              <TabsList>
-                <TabsTrigger value="active">Active ({activeActions.length})</TabsTrigger>
-                <TabsTrigger value="completed">Completed ({completedActions.length})</TabsTrigger>
+              <TabsList className="bg-gray-100">
+                <TabsTrigger value="active" className="text-[#666666] data-[state=active]:text-[#333333] data-[state=active]:bg-white">Active ({activeActions.length})</TabsTrigger>
+                <TabsTrigger value="completed" className="text-[#666666] data-[state=active]:text-[#333333] data-[state=active]:bg-white">Completed ({completedActions.length})</TabsTrigger>
               </TabsList>
               <TabsContent value="active" className="mt-6">
                 <BoldActionsList 

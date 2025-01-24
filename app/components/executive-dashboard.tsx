@@ -180,12 +180,13 @@ export default function ExecutiveDashboard() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-3xl font-bold mb-6">Executive Dashboard</h1>
-      
-      <Card>
+    <div className="pt-8">
+      <Card className="bg-white rounded-none border-0">
         <CardHeader>
-          <CardTitle>Company Overview</CardTitle>
+          <CardTitle className="text-[#333333]">Company Overview</CardTitle>
+          <p className="text-[#666666] mt-1.5">
+            Monitor and manage company-wide progress and performance.
+          </p>
         </CardHeader>
         <CardContent>
           <Input
@@ -193,27 +194,29 @@ export default function ExecutiveDashboard() {
             placeholder="Search users..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="mb-4"
+            className="mb-4 bg-white text-[#333333] border-gray-200"
           />
           <ScrollArea className="h-[600px]">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Current Bold Action</TableHead>
-                  <TableHead>Latest Training</TableHead>
-                  <TableHead>Actions</TableHead>
+                <TableRow className="border-gray-200">
+                  <TableHead className="text-[#333333]">Name</TableHead>
+                  <TableHead className="text-[#333333]">Current Bold Action</TableHead>
+                  <TableHead className="text-[#333333]">Latest Training</TableHead>
+                  <TableHead className="text-[#333333]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.firstName} {user.lastName}</TableCell>
-                    <TableCell>
+                  <TableRow key={user.id} className="border-gray-200">
+                    <TableCell className="text-[#333333] font-medium">
+                      {user.firstName} {user.lastName}
+                    </TableCell>
+                    <TableCell className="text-[#666666]">
                       {user.latestBoldAction ? (
                         <div>
-                          <div>{user.latestBoldAction.action}</div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-[#333333]">{user.latestBoldAction.action}</div>
+                          <div className="text-sm text-[#666666]">
                             Started: {user.latestBoldAction.createdAt.toLocaleDateString()}
                             <br />
                             Timeframe: {user.latestBoldAction.timeframe}
@@ -223,11 +226,11 @@ export default function ExecutiveDashboard() {
                         'No active bold action'
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-[#666666]">
                       {user.latestTraining ? (
                         <div>
-                          <div>{user.latestTraining.title}</div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-[#333333]">{user.latestTraining.title}</div>
+                          <div className="text-sm text-[#666666]">
                             Completed: {user.latestTraining.completedAt.toLocaleDateString()}
                           </div>
                         </div>
@@ -240,6 +243,7 @@ export default function ExecutiveDashboard() {
                         onClick={() => router.push(`/user-details/${user.id}`)}
                         variant="outline"
                         size="sm"
+                        className="bg-white text-[#333333] border-gray-200 hover:bg-gray-50"
                       >
                         View Details
                       </Button>

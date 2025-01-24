@@ -122,12 +122,13 @@ export default function SupervisorDashboard() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">My Team</h1>
-      
-      <Card>
+    <div className="pt-8">
+      <Card className="bg-white rounded-none border-0">
         <CardHeader>
-          <CardTitle>Team Overview</CardTitle>
+          <CardTitle className="text-[#333333]">Team Overview</CardTitle>
+          <p className="text-[#666666] mt-1.5">
+            Monitor and manage your team's progress and performance.
+          </p>
         </CardHeader>
         <CardContent>
           <Input
@@ -135,53 +136,45 @@ export default function SupervisorDashboard() {
             placeholder="Search team members..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="mb-4"
+            className="mb-4 bg-white text-[#333333] border-gray-200"
           />
-          
-          {teamMembers.length === 0 ? (
-            <Card className="bg-white">
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <p className="text-lg text-gray-600 text-center">
-                  You don't have any team members yet, speak to your team leader
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <ScrollArea className="h-[600px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Current Bold Action</TableHead>
-                    <TableHead>Current Training</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Needs Follow Up</TableHead>
-                    <TableHead>Actions</TableHead>
+          <ScrollArea className="h-[600px]">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-gray-200">
+                  <TableHead className="text-[#333333]">Name</TableHead>
+                  <TableHead className="text-[#333333]">Current Bold Action</TableHead>
+                  <TableHead className="text-[#333333]">Latest Training</TableHead>
+                  <TableHead className="text-[#333333]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredMembers.map((member) => (
+                  <TableRow key={member.id} className="border-gray-200">
+                    <TableCell className="text-[#333333] font-medium">
+                      {member.firstName} {member.lastName}
+                    </TableCell>
+                    <TableCell className="text-[#666666]">
+                      {member.currentBoldAction || 'No active bold action'}
+                    </TableCell>
+                    <TableCell className="text-[#666666]">
+                      {member.currentTraining || 'No training in progress'}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/user-details/${member.id}`)}
+                        className="bg-white text-[#333333] border-gray-200 hover:bg-gray-50"
+                      >
+                        View Details
+                      </Button>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredMembers.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell>{member.name}</TableCell>
-                      <TableCell>{member.currentBoldAction}</TableCell>
-                      <TableCell>{member.currentTraining}</TableCell>
-                      <TableCell>{member.department}</TableCell>
-                      <TableCell>{member.needsFollowUp ? 'Yes' : 'No'}</TableCell>
-                      <TableCell>
-                        <Button
-                          onClick={() => router.push(`/user-details/${member.id}`)}
-                          variant="outline"
-                          size="sm"
-                        >
-                          View Details
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          )}
+                ))}
+              </TableBody>
+            </Table>
+          </ScrollArea>
         </CardContent>
       </Card>
     </div>

@@ -17,6 +17,7 @@ import { db } from '@/lib/firebase'
 import { doc, getDoc, updateDoc, arrayUnion, Timestamp, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
 import { toast } from "@/components/ui/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { format } from 'date-fns'
 
 interface UserKPIs {
   currentBoldAction: string | null
@@ -53,37 +54,32 @@ interface Training {
   trainingDate: Date
 }
 
-interface MeetingNote {
+interface StandupNote {
+  notes: string
   date: Timestamp
-  note: string
-  boldAction?: string
-  expectedTimeframe?: string
+  supervisorId: string
+  supervisorName: string
 }
 
 export default function UserDetailsPage({ params }: { params: { id: string } }) {
-  const unwrappedParams = React.use(params)
   const [user, setUser] = useState<any>(null)
   const [kpis, setKPIs] = useState<UserKPIs | null>(null)
   const [worksheets, setWorksheets] = useState<Worksheet[]>([])
   const [boldActions, setBoldActions] = useState<BoldAction[]>([])
   const [trainings, setTrainings] = useState<Training[]>([])
-  const [meetingNotes, setMeetingNotes] = useState<MeetingNote[]>([])
-  const [newNote, setNewNote] = useState('')
-  const [newBoldAction, setNewBoldAction] = useState('')
-  const [newExpectedTimeframe, setNewExpectedTimeframe] = useState<string | undefined>(undefined)
-  const [isAddingBoldAction, setIsAddingBoldAction] = useState(false)
   const [currentWorksheetIndex, setCurrentWorksheetIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const { user: currentUser, userRole: currentUserRole } = useAuth()
   const router = useRouter()
+  const [standupNotes, setStandupNotes] = useState<StandupNote[]>([])
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!currentUser || !unwrappedParams.id) return
+      if (!currentUser || !params.id) return
       
       try {
         // Check if user has permission to view details
-        if (currentUserRole !== 'executive' && currentUserRole !== 'supervisor' && currentUser.uid !== unwrappedParams.id) {
+        if (currentUserRole !== 'executive' && currentUserRole !== 'supervisor' && currentUser.uid !== params.id) {
           toast({
             title: "Access Denied",
             description: "You do not have permission to view this user's details.",
@@ -94,7 +90,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
         }
 
         // Fetch user document
-        const userRef = doc(db, 'users', unwrappedParams.id)
+        const userRef = doc(db, 'users', params.id)
         const userDoc = await getDoc(userRef)
         
         if (!userDoc.exists()) {
@@ -113,7 +109,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
         setUser({ id: userDoc.id, ...userData })
         
         // Fetch bold actions
-        const boldActionsRef = collection(db, `users/${unwrappedParams.id}/boldActions`)
+        const boldActionsRef = collection(db, `users/${params.id}/boldActions`)
         const boldActionsQuery = query(
           boldActionsRef,
           orderBy('createdAt', 'desc')
@@ -143,7 +139,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
         })
         
         // Fetch trainings
-        const progressRef = doc(db, `users/${unwrappedParams.id}/progress/trainings`)
+        const progressRef = doc(db, `users/${params.id}/progress/trainings`)
         const progressDoc = await getDoc(progressRef)
         const progressData = progressDoc.exists() ? progressDoc.data() : {}
         
@@ -181,7 +177,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
         // Fetch worksheets
         const worksheetsQuery = query(
           collection(db, 'worksheets'),
-          where('userId', '==', unwrappedParams.id),
+          where('userId', '==', params.id),
           orderBy('completionDate', 'desc')
         )
         const worksheetsSnapshot = await getDocs(worksheetsQuery)
@@ -197,9 +193,11 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
         }))
         setWorksheets(worksheetsData)
         
-        // Fetch meeting notes (only for supervisors and executives)
-        if (userData.meetingNotes) {
-          setMeetingNotes(userData.meetingNotes)
+        // Fetch standup notes
+        if (userData.standupNotes) {
+          setStandupNotes(userData.standupNotes.sort((a: StandupNote, b: StandupNote) => 
+            b.date.seconds - a.date.seconds
+          ))
         }
         
         setLoading(false)
@@ -215,7 +213,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
     }
 
     fetchUserData()
-  }, [currentUser, unwrappedParams.id, router, currentUserRole])
+  }, [currentUser, params.id, router, currentUserRole])
 
   const handlePrevWorksheet = () => {
     setCurrentWorksheetIndex((prev) => (prev > 0 ? prev - 1 : prev))
@@ -223,45 +221,6 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
 
   const handleNextWorksheet = () => {
     setCurrentWorksheetIndex((prev) => (prev < worksheets.length - 1 ? prev + 1 : prev))
-  }
-
-  const saveMeetingNote = async () => {
-    if (newNote.trim()) {
-      try {
-        const newMeetingNote: MeetingNote = {
-          date: Timestamp.now(),
-          note: newNote.trim(),
-        }
-
-        if (isAddingBoldAction && newBoldAction.trim() && newExpectedTimeframe) {
-          newMeetingNote.boldAction = newBoldAction.trim();
-          newMeetingNote.expectedTimeframe = newExpectedTimeframe;
-        }
-
-        const userRef = doc(db, 'users', unwrappedParams.id)
-        await updateDoc(userRef, {
-          meetingNotes: arrayUnion(newMeetingNote)
-        })
-
-        setMeetingNotes([...meetingNotes, newMeetingNote])
-        setNewNote('')
-        setNewBoldAction('')
-        setNewExpectedTimeframe(undefined)
-        setIsAddingBoldAction(false)
-
-        toast({
-          title: "Success",
-          description: "Meeting note saved successfully.",
-        })
-      } catch (error) {
-        console.error('Error saving meeting note:', error)
-        toast({
-          title: "Error",
-          description: "Failed to save meeting note. Please try again.",
-          variant: "destructive",
-        })
-      }
-    }
   }
 
   if (loading) {
@@ -279,7 +238,6 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
   const isTeamMember = user.role === 'team_member'
   const isSupervisor = user.role === 'supervisor'
   const isExecutive = user.role === 'executive'
-  const canViewMeetingNotes = currentUserRole === 'supervisor' || currentUserRole === 'executive'
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -399,7 +357,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
             <TabsTrigger value="actions">Bold Actions</TabsTrigger>
             <TabsTrigger value="training">Training Progress</TabsTrigger>
             <TabsTrigger value="worksheets">Worksheet Answers</TabsTrigger>
-            {canViewMeetingNotes && <TabsTrigger value="notes">Meeting Notes</TabsTrigger>}
+            <TabsTrigger value="standups">Standup Notes</TabsTrigger>
           </TabsList>
 
           <TabsContent value="actions" className="space-y-4">
@@ -529,71 +487,44 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
             </Card>
           </TabsContent>
 
-          {canViewMeetingNotes && (
-            <TabsContent value="notes">
-              <Card>
-                <CardContent className="pt-6 space-y-6">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Note</TableHead>
-                        <TableHead>Bold Action</TableHead>
-                        <TableHead>Expected Timeframe</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {meetingNotes.map((note, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{note.date.toDate().toLocaleDateString()}</TableCell>
-                          <TableCell>{note.note}</TableCell>
-                          <TableCell>{note.boldAction || 'N/A'}</TableCell>
-                          <TableCell>{note.expectedTimeframe || 'N/A'}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-
-                  <div className="space-y-4 pt-4 border-t">
-                    <Textarea
-                      placeholder="Add a new meeting note..."
-                      value={newNote}
-                      onChange={(e) => setNewNote(e.target.value)}
-                    />
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="add-bold-action"
-                        checked={isAddingBoldAction}
-                        onCheckedChange={(checked) => setIsAddingBoldAction(checked as boolean)}
-                      />
-                      <Label htmlFor="add-bold-action">Add Bold Action</Label>
-                    </div>
-                    {isAddingBoldAction && (
-                      <div className="space-y-4">
-                        <Input
-                          placeholder="Enter new Bold Action"
-                          value={newBoldAction}
-                          onChange={(e) => setNewBoldAction(e.target.value)}
-                        />
-                        <Select value={newExpectedTimeframe} onValueChange={setNewExpectedTimeframe}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select expected timeframe" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1 Week">1 Week</SelectItem>
-                            <SelectItem value="2 Weeks">2 Weeks</SelectItem>
-                            <SelectItem value="3 Weeks">3 Weeks</SelectItem>
-                            <SelectItem value="1 Month">1 Month</SelectItem>
-                          </SelectContent>
-                        </Select>
+          <TabsContent value="standups">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-white">Standup Notes History</CardTitle>
+                <CardDescription className="text-white/80">
+                  Record of all standup meetings with this team member
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {standupNotes.length > 0 ? (
+                    standupNotes.map((note, index) => (
+                      <div 
+                        key={index}
+                        className="bg-white rounded-lg p-4 space-y-2 border border-gray-200"
+                      >
+                        <div className="flex items-center space-x-2 mb-3">
+                          <Clock className="w-4 h-4 text-[#666666]" />
+                          <p className="text-sm text-[#666666]">
+                            {format(note.date.toDate(), 'MMM d, yyyy h:mm a')}
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 rounded p-3">
+                          <p className="text-[#333333] whitespace-pre-wrap">
+                            {note.notes}
+                          </p>
+                        </div>
                       </div>
-                    )}
-                    <Button onClick={saveMeetingNote}>Save Note</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-white/80">
+                      No standup notes available
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
     </div>

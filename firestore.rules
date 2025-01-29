@@ -78,6 +78,19 @@ service cloud.firestore {
         );
         allow write: if isAuthenticated() && request.auth.uid == userId;
       }
+
+      // Allow users to read/write their own standups, and supervisors to read their team's standups
+      match /standups/{standupId} {
+        allow read: if isAuthenticated() && (
+          request.auth.uid == userId || // User can read their own standups
+          resource.data.supervisorId == request.auth.uid || // Supervisor can read their team's standups
+          isExecutive() // Executives can read all standups
+        );
+        allow write: if isAuthenticated() && (
+          request.auth.uid == userId || // User can write their own standups
+          request.auth.uid == request.resource.data.supervisorId // Supervisor can write standups for their team
+        );
+      }
     }
     
     // Invites collection rules

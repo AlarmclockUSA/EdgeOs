@@ -10,6 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { ScheduleStandupModal } from './modals/schedule-standup-modal'
+import { UpcomingStandups } from './upcoming-standups'
 
 interface TeamMember {
   id: string
@@ -32,6 +34,7 @@ export default function SupervisorDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -123,6 +126,18 @@ export default function SupervisorDashboard() {
 
   return (
     <div className="pt-8">
+      {/* 5-Minute Stand ups Card */}
+      <Card className="bg-white rounded-none border-0 mb-8">
+        <CardHeader className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB]">
+          <CardTitle className="text-xl sm:text-2xl font-semibold text-white">5-Minute Stand ups</CardTitle>
+          <p className="text-white/80">Quick check-ins with your team</p>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6">
+          <UpcomingStandups />
+        </CardContent>
+      </Card>
+
+      {/* Team Overview Card */}
       <Card className="bg-white rounded-none border-0">
         <CardHeader>
           <CardTitle className="text-[#333333]">Team Overview</CardTitle>
@@ -161,14 +176,24 @@ export default function SupervisorDashboard() {
                       {member.currentTraining || 'No training in progress'}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push(`/user-details/${member.id}`)}
-                        className="bg-white text-[#333333] border-gray-200 hover:bg-gray-50"
-                      >
-                        View Details
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push(`/user-details/${member.id}`)}
+                          className="bg-white text-[#333333] border-gray-200 hover:bg-gray-50"
+                        >
+                          View Details
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedMember(member)}
+                          className="bg-white text-[#333333] border-gray-200 hover:bg-gray-50"
+                        >
+                          Schedule Standup
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -177,6 +202,14 @@ export default function SupervisorDashboard() {
           </ScrollArea>
         </CardContent>
       </Card>
+
+      {selectedMember && (
+        <ScheduleStandupModal
+          isOpen={!!selectedMember}
+          onClose={() => setSelectedMember(null)}
+          teamMember={selectedMember}
+        />
+      )}
     </div>
   )
 } 

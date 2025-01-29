@@ -16,7 +16,6 @@ import { db } from '@/lib/firebase'
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, updateDoc, increment, setDoc } from 'firebase/firestore'
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "@/components/ui/use-toast"
-import { AdminDebugMenu } from '@/components/admin-debug-menu'
 import { FirebaseError } from 'firebase/app'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
@@ -33,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { auth } from '@/lib/firebase'
 import { VideoModule } from '@/components/video-module'
+import { UpcomingStandups } from '@/components/upcoming-standups'
 
 interface Training {
   id: string
@@ -587,49 +587,39 @@ export default function Dashboard() {
     }
   }, [companyName])
 
-  const handleBoldActionComplete = useCallback(async (actionId: string) => {
-    if (user) {
-      setIsBoldActionsLoading(true)
-      try {
-        // Update the bold action status in Firestore
-        const boldActionRef = doc(db, 'boldActions', actionId)
-        await updateDoc(boldActionRef, {
-          status: 'completed',
-          completedAt: new Date()
-        })
+  const handleBoldActionComplete = useCallback(async (id: string) => {
+    if (!user) return;
+    
+    try {
+      // Update local state immediately for optimistic update
+      setBoldActions(prev => {
+        const newActions = prev.map(action => 
+          action.id === id 
+            ? { ...action, status: 'completed' as const, completedAt: new Date() }
+            : action
+        );
+        return newActions;
+      });
 
-        // Increment the completed bold actions count
-        setCompletedBoldActions((prev) => prev + 1)
+      // Update completed count
+      setCompletedBoldActionsYTD(prev => prev + 1);
 
-        // Update the user document in Firestore
-        const userRef = doc(db, 'users', user.uid)
-        await updateDoc(userRef, {
-          completedBoldActions: increment(1)
-        })
+      // Close modal
+      setIsBoldActionModalOpen(false);
+      setBoldActionToView(null);
 
-        // Fetch updated bold actions
-        await fetchBoldActions()
-
-        // Update company progress
-        await fetchCompanyProgress()
-
-        toast({
-          title: "Bold Action Completed",
-          description: "Your bold action has been marked as completed.",
-          variant: "default",
-        })
-      } catch (error) {
-        console.error('Error completing bold action:', error)
-        toast({
-          title: "Error",
-          description: "Failed to complete bold action. Please try again.",
-          variant: "destructive",
-        })
-      } finally {
-        setIsBoldActionsLoading(false)
-      }
+      // Fetch fresh data in the background
+      await fetchBoldActions();
+      await fetchCompanyProgress();
+    } catch (error) {
+      console.error('Error completing bold action:', error);
+      toast({
+        title: "Error",
+        description: "Failed to complete bold action. Please try again.",
+        variant: "destructive",
+      });
     }
-  }, [user, fetchBoldActions, fetchCompanyProgress])
+  }, [user, fetchBoldActions, fetchCompanyProgress]);
 
   useEffect(() => {
     fetchBoldActions()
@@ -689,14 +679,17 @@ export default function Dashboard() {
       <div className="p-8">
         {/* Three Column Grid */}
         <div className="grid grid-cols-3 gap-8">
-          {/* Welcome Card */}
-          <Card className="bg-white text-[#333333] shadow-md">
-            <CardHeader className="p-4 sm:p-6 bg-gradient-to-r from-[#DD8D00] to-[#E6A533]">
-              <CardTitle className="text-xl sm:text-2xl font-semibold text-white">Welcome Back!</CardTitle>
+          {/* 5-Minute Stand ups Card */}
+          <Card className="bg-white text-[#333333] shadow-md flex flex-col">
+            <CardHeader className="p-4 sm:p-6 bg-gradient-to-r from-[#1E3A8A] to-[#2563EB]">
+              <CardTitle className="text-xl sm:text-2xl font-semibold text-white">5-Minute Stand ups</CardTitle>
               <p className="text-white/80">
-                Where will your growth take you today?
+                Quick check-ins with your team
               </p>
             </CardHeader>
+            <CardContent className="flex-grow p-4 sm:p-6">
+              <UpcomingStandups />
+            </CardContent>
           </Card>
 
           {/* Bold Actions Card with Year-to-Date Progress */}
@@ -704,12 +697,11 @@ export default function Dashboard() {
             <CardHeader className="p-4 sm:p-6 bg-gradient-to-r from-[#3E5E17] to-[#527A1F]">
               <CardTitle className="text-xl sm:text-2xl font-semibold text-white">Bold Actions</CardTitle>
               {/* Year-to-Date Progress */}
-              <div className="mt-4 space-y-2">
+              <div className="mt-4">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-white/80">Year-to-Date Progress</span>
                   <span className="font-medium text-white">{completedBoldActionsYTD} Completed</span>
                 </div>
-                <Progress value={completedBoldActionsYTD * 10} className="h-2 bg-white/20" />
               </div>
             </CardHeader>
             {boldActions.filter(action => action.status === 'active').length > 3 && (
@@ -727,40 +719,50 @@ export default function Dashboard() {
                   <div className="space-y-6">
                     {/* Active Bold Actions */}
                     <div>
-                      <h3 className="font-semibold text-lg mb-3">Current</h3>
-                      <ul className="space-y-4">
-                        {boldActions
-                          .filter(action => action.status === 'active')
-                          .map((action) => (
-                            <li key={action.id} className="flex items-center justify-between space-x-2 py-2">
-                              <div className="flex-grow">
-                                <p className="font-medium text-base text-[#333333]">{action.action}</p>
-                                <p className="text-sm text-[#666666]">
-                                  Due: {action.timeframe}
-                                </p>
-                              </div>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setBoldActionToView({
-                                    ...action,
-                                    completedAt: action.completedAt || null,
-                                    createdAt: action.createdAt || null
-                                  })
-                                  setIsBoldActionModalOpen(true)
-                                }}
-                              >
-                                View
-                              </Button>
-                            </li>
-                          ))}
-                      </ul>
+                      {boldActions.filter(action => action.status === 'active').length > 0 ? (
+                        <>
+                          <h3 className="font-semibold text-lg mb-3">Current</h3>
+                          <ul className="space-y-4">
+                            {boldActions
+                              .filter(action => action.status === 'active')
+                              .map((action) => (
+                              <li key={action.id} className="flex items-center justify-between space-x-2 py-2">
+                                <div className="flex-grow">
+                                  <p className="font-medium text-base text-[#333333]">{action.action}</p>
+                                  <p className="text-sm text-[#666666]">
+                                    Due: {action.timeframe}
+                                  </p>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setBoldActionToView({
+                                      ...action,
+                                      completedAt: action.completedAt || null,
+                                      createdAt: action.createdAt || null
+                                    })
+                                    setIsBoldActionModalOpen(true)
+                                  }}
+                                >
+                                  View
+                                </Button>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      ) : (
+                        <div className="text-center py-8 text-gray-500">
+                          <p>No active bold actions</p>
+                          <p className="text-sm mt-1">Complete your training to get started with bold actions</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
-                    No bold actions found
+                    <p>No active bold actions</p>
+                    <p className="text-sm mt-1">Complete your training to get started with bold actions</p>
                   </div>
                 )}
               </ScrollArea>
@@ -844,7 +846,6 @@ export default function Dashboard() {
         boldAction={boldActionToView}
         onComplete={handleBoldActionComplete}
       />
-      <AdminDebugMenu />
     </div>
   )
 }

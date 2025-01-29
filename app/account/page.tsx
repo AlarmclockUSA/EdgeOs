@@ -8,8 +8,9 @@ import { useAuth } from '@/lib/auth-context'
 import { db, auth } from '@/lib/firebase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
+import { VirtualMeetingSettings } from '@/components/settings/virtual-meeting-settings'
 
 export default function Account() {
   const { user, loading } = useAuth()
@@ -20,6 +21,7 @@ export default function Account() {
   const [newPassword, setNewPassword] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const isSupervisor = user?.role === 'supervisor' || user?.role === 'executive'
 
   useEffect(() => {
     if (!loading && !user) {
@@ -144,6 +146,21 @@ export default function Account() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Virtual Meeting Settings for Supervisors and Executives */}
+      {isSupervisor && (
+        <Card className="max-w-md mx-auto bg-white">
+          <CardHeader>
+            <CardTitle className="text-black">Virtual Meeting Settings</CardTitle>
+            <CardDescription>
+              Set up your default meeting room for 5-minute stand ups
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <VirtualMeetingSettings />
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

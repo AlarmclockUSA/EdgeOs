@@ -56,24 +56,36 @@ export function BoldActionModal({ isOpen, onClose, boldAction, onComplete }: Bol
 
     setIsCompleting(true)
     try {
+      // First update Firestore
       const boldActionRef = doc(db, `users/${user.uid}/boldActions`, boldAction.id)
-      await setDoc(boldActionRef, {
-        status: 'completed',
-        completedAt: new Date(),
+      const userRef = doc(db, 'users', user.uid)
+      
+      // Prepare the updates
+      const now = new Date()
+      const updates = {
+        status: 'completed' as const,
+        completedAt: now,
         actualTimeframe,
         reflectionNotes: reflectionNotes.trim() || null
-      }, { merge: true })
+      }
+      
+      // Update both documents atomically
+      await Promise.all([
+        setDoc(boldActionRef, updates, { merge: true }),
+        updateDoc(userRef, {
+          completedBoldActions: increment(1)
+        })
+      ])
 
-      await updateDoc(doc(db, 'users', user.uid), {
-        completedBoldActions: increment(1)
-      })
-
+      // Call onComplete to update parent state
+      onComplete(boldAction.id)
+      
       toast({
         title: "Bold Action Completed",
         description: "Your bold action has been marked as completed.",
       })
 
-      onComplete(boldAction.id)
+      // Close modal
       onClose()
     } catch (error) {
       console.error('Error completing bold action:', error)

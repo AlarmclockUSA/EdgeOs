@@ -9,6 +9,7 @@ import { collection, doc, getDoc, getDocs, query, where, orderBy, Timestamp } fr
 import { Loader2, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BoldActionModal } from '@/components/bold-action-modal'
+import { Progress } from '@/components/ui/progress'
 
 interface BoldAction {
   id: string
@@ -115,23 +116,11 @@ export default function BoldActions() {
   const [loading, setLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<BoldAction | null>(null)
+  
+  // Derive completed count from boldActions
+  const completedCount = boldActions.filter(action => action.status === 'completed').length
 
-  const handleComplete = useCallback((action: BoldAction) => {
-    setSelectedAction(action)
-    setIsModalOpen(true)
-  }, [])
-
-  const handleModalClose = useCallback(() => {
-    setIsModalOpen(false)
-    setSelectedAction(null)
-  }, [])
-
-  const handleActionComplete = useCallback(async (id: string) => {
-    // Refresh the bold actions list after completion
-    fetchBoldActions()
-  }, [])
-
-  const fetchBoldActions = async () => {
+  const fetchBoldActions = useCallback(async () => {
     if (!user) return
     
     try {
@@ -152,16 +141,37 @@ export default function BoldActions() {
       })) as BoldAction[]
 
       setBoldActions(actions)
-      setLoading(false)
     } catch (error) {
       console.error('Error fetching bold actions:', error)
+    } finally {
       setLoading(false)
     }
-  }
+  }, [user])
+
+  const handleComplete = useCallback((action: BoldAction) => {
+    setSelectedAction(action)
+    setIsModalOpen(true)
+  }, [])
+
+  const handleModalClose = useCallback(() => {
+    setIsModalOpen(false)
+    setSelectedAction(null)
+  }, [])
+
+  const handleActionComplete = useCallback((id: string) => {
+    // Simple optimistic update
+    setBoldActions(prev => prev.map(action => 
+      action.id === id 
+        ? { ...action, status: 'completed' as const, completedAt: new Date() }
+        : action
+    ))
+  }, [])
 
   useEffect(() => {
-    fetchBoldActions()
-  }, [user])
+    if (user) {
+      fetchBoldActions()
+    }
+  }, [fetchBoldActions, user])
 
   const activeActions = boldActions.filter(action => action.status === 'active')
   const completedActions = boldActions.filter(action => action.status === 'completed')
@@ -172,7 +182,13 @@ export default function BoldActions() {
       <div className="bg-gradient-to-r from-[#3E5E17] to-[#527A1F] py-8">
         <div className="px-8">
           <h1 className="text-2xl font-semibold text-white">Bold Actions</h1>
-          <p className="text-white/80 mt-2">Track and manage your growth commitments</p>
+          <div className="mt-4 space-y-2">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-white/80">Year-to-Date Progress</span>
+              <span className="font-medium text-white">{completedCount} Completed</span>
+            </div>
+            <Progress value={completedCount * 10} className="h-2 bg-white/20" />
+          </div>
         </div>
       </div>
 

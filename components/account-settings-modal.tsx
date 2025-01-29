@@ -8,8 +8,10 @@ import { db, auth } from '@/lib/firebase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { toast } from "@/components/ui/use-toast"
+import { VirtualMeetingSettings } from '@/components/settings/virtual-meeting-settings'
+import { Separator } from '@/components/ui/separator'
 
 interface AccountSettingsModalProps {
   isOpen: boolean
@@ -17,12 +19,13 @@ interface AccountSettingsModalProps {
 }
 
 export function AccountSettingsModal({ isOpen, onClose }: AccountSettingsModalProps) {
-  const { user } = useAuth()
+  const { user, userRole } = useAuth()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const isSupervisor = userRole === 'supervisor' || userRole === 'executive'
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -110,7 +113,7 @@ export function AccountSettingsModal({ isOpen, onClose }: AccountSettingsModalPr
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] bg-white">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-white">
         <DialogHeader>
           <DialogTitle className="text-[#333333]">Account Settings</DialogTitle>
         </DialogHeader>
@@ -153,14 +156,7 @@ export function AccountSettingsModal({ isOpen, onClose }: AccountSettingsModalPr
               className="bg-white text-[#333333] border-gray-200"
             />
           </div>
-          <div className="flex justify-between pt-4">
-            <Button
-              type="button"
-              onClick={onClose}
-              className="bg-white text-[#333333] border border-gray-200 hover:bg-gray-50"
-            >
-              Cancel
-            </Button>
+          <div className="flex justify-end pt-4">
             <Button
               type="submit"
               disabled={isLoading}
@@ -170,6 +166,24 @@ export function AccountSettingsModal({ isOpen, onClose }: AccountSettingsModalPr
             </Button>
           </div>
         </form>
+
+        {/* Virtual Meeting Settings for Supervisors and Executives */}
+        {isSupervisor && (
+          <>
+            <Separator className="my-6" />
+            <div>
+              <DialogHeader>
+                <DialogTitle className="text-[#333333]">Virtual Meeting Settings</DialogTitle>
+                <DialogDescription>
+                  Set up your default meeting room for 5-minute stand ups
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mt-4">
+                <VirtualMeetingSettings />
+              </div>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   )

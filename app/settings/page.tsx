@@ -1,5 +1,5 @@
 import { VirtualMeetingSettings } from '@/components/settings/virtual-meeting-settings';
-import { useAuth } from '@/lib/auth';
+import { useAuth } from '@/lib/auth-context';
 
 export default function SettingsPage() {
   const { user } = useAuth();

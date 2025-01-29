@@ -145,11 +145,11 @@ export function BoldActionModal({ isOpen, onClose, boldAction, onComplete }: Bol
                     <SelectValue placeholder="Select actual timeframe" />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
-                    <SelectItem value="Less than 1 Week">Less than 1 Week</SelectItem>
-                    <SelectItem value="1 Week">1 Week</SelectItem>
-                    <SelectItem value="2 Weeks">2 Weeks</SelectItem>
-                    <SelectItem value="3 Weeks">3 Weeks</SelectItem>
-                    <SelectItem value="4+ Weeks">4+ Weeks</SelectItem>
+                    <SelectItem value="Less than 1 Week" className="text-gray-900">Less than 1 Week</SelectItem>
+                    <SelectItem value="1 Week" className="text-gray-900">1 Week</SelectItem>
+                    <SelectItem value="2 Weeks" className="text-gray-900">2 Weeks</SelectItem>
+                    <SelectItem value="3 Weeks" className="text-gray-900">3 Weeks</SelectItem>
+                    <SelectItem value="4+ Weeks" className="text-gray-900">4+ Weeks</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

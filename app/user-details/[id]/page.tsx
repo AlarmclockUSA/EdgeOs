@@ -55,10 +55,35 @@ interface Training {
 }
 
 interface StandupNote {
+  id: string
   notes: string
   date: Timestamp
   supervisorId: string
   supervisorName: string
+}
+
+function formatDate(date: Date | Timestamp | { seconds: number, nanoseconds: number } | any) {
+  if (!date) return '';
+  
+  try {
+    // If it's a Firestore Timestamp
+    if (date instanceof Timestamp || (date?.toDate && typeof date.toDate === 'function')) {
+      return format(date.toDate(), 'MMM d, yyyy h:mm a');
+    }
+    // If it's a regular Date object
+    else if (date instanceof Date) {
+      return format(date, 'MMM d, yyyy h:mm a');
+    }
+    // If it's a timestamp-like object with seconds
+    else if (date?.seconds) {
+      return format(new Date(date.seconds * 1000), 'MMM d, yyyy h:mm a');
+    }
+    // Fallback: try to create a new Date
+    return format(new Date(date), 'MMM d, yyyy h:mm a');
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Invalid date';
+  }
 }
 
 export default function UserDetailsPage({ params }: { params: { id: string } }) {
@@ -115,12 +140,30 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
           orderBy('createdAt', 'desc')
         )
         const boldActionsSnapshot = await getDocs(boldActionsQuery)
-        const boldActionsData = boldActionsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate()
-        }))
-        setBoldActions(boldActionsData as BoldAction[])
+        const boldActionsData = boldActionsSnapshot.docs.map(doc => {
+          const data = doc.data()
+          let createdAtDate: Date;
+          
+          // Handle different date formats
+          if (data.createdAt?.toDate) {
+            createdAtDate = data.createdAt.toDate();
+          } else if (data.createdAt?.seconds) {
+            createdAtDate = new Date(data.createdAt.seconds * 1000);
+          } else if (data.createdAt) {
+            createdAtDate = new Date(data.createdAt);
+          } else {
+            createdAtDate = new Date();
+          }
+
+          return {
+            id: doc.id,
+            action: data.action || '',
+            status: data.status || 'active',
+            createdAt: createdAtDate,
+            timeframe: data.timeframe || ''
+          } satisfies BoldAction
+        })
+        setBoldActions(boldActionsData)
         
         // Set KPIs based on bold actions and user data
         const activeBoldActions = boldActionsData.filter(ba => ba.status === 'active')
@@ -181,23 +224,39 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
           orderBy('completionDate', 'desc')
         )
         const worksheetsSnapshot = await getDocs(worksheetsQuery)
-        const worksheetsData = await Promise.all(worksheetsSnapshot.docs.map(async (doc) => {
-          const data = doc.data()
+        const worksheetsData = await Promise.all(worksheetsSnapshot.docs.map(async (docSnapshot) => {
+          const data = docSnapshot.data()
           const trainingDoc = await getDoc(doc(db, 'trainings', data.trainingId))
+          const trainingData = trainingDoc.data() || {}
           return {
-            id: doc.id,
-            trainingTitle: trainingDoc.exists() ? trainingDoc.data()?.title : 'Unknown Training',
+            id: docSnapshot.id,
+            trainingTitle: trainingData.title || 'Unknown Training',
             completionDate: data.completionDate?.toDate() || new Date(),
             answers: data.answers || {}
-          }
+          } satisfies Worksheet
         }))
         setWorksheets(worksheetsData)
         
-        // Fetch standup notes
-        if (userData.standupNotes) {
-          setStandupNotes(userData.standupNotes.sort((a: StandupNote, b: StandupNote) => 
-            b.date.seconds - a.date.seconds
-          ))
+        // Fetch standup notes from subcollection
+        try {
+          const standupNotesRef = collection(db, `users/${params.id}/standups`)
+          const standupNotesQuery = query(standupNotesRef, orderBy('date', 'desc'))
+          const standupNotesSnapshot = await getDocs(standupNotesQuery)
+          const standupNotesData = standupNotesSnapshot.docs.map(doc => {
+            const data = doc.data()
+            return {
+              id: doc.id,
+              notes: data.notes || '',
+              date: data.date,
+              supervisorId: data.supervisorId || '',
+              supervisorName: data.supervisorName || ''
+            } satisfies StandupNote
+          })
+          setStandupNotes(standupNotesData)
+        } catch (error) {
+          console.error('Error fetching standup notes:', error)
+          // Don't show an error toast here as standup notes are optional
+          setStandupNotes([])
         }
         
         setLoading(false)
@@ -490,8 +549,8 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
           <TabsContent value="standups">
             <Card>
               <CardHeader>
-                <CardTitle className="text-white">Standup Notes History</CardTitle>
-                <CardDescription className="text-white/80">
+                <CardTitle>Standup Notes History</CardTitle>
+                <CardDescription>
                   Record of all standup meetings with this team member
                 </CardDescription>
               </CardHeader>
@@ -506,7 +565,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                         <div className="flex items-center space-x-2 mb-3">
                           <Clock className="w-4 h-4 text-[#666666]" />
                           <p className="text-sm text-[#666666]">
-                            {format(note.date.toDate(), 'MMM d, yyyy h:mm a')}
+                            {formatDate(note.date)}
                           </p>
                         </div>
                         <div className="bg-gray-50 rounded p-3">
@@ -517,7 +576,7 @@ export default function UserDetailsPage({ params }: { params: { id: string } }) 
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-8 text-white/80">
+                    <div className="text-center py-8">
                       No standup notes available
                     </div>
                   )}

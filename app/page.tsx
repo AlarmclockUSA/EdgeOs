@@ -744,6 +744,7 @@ export default function Dashboard() {
                                     })
                                     setIsBoldActionModalOpen(true)
                                   }}
+                                  className="text-white bg-[#0056D2] hover:bg-[#0056D2]/90 border-[#0056D2]"
                                 >
                                   View
                                 </Button>

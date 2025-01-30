@@ -45,7 +45,18 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isExecutive() || isSupervisor());
       allow update: if isAuthenticated() && (
         request.auth.uid == userId || 
-        (isExecutive() && belongsToCompany(resource.data.companyName))
+        (isExecutive() && belongsToCompany(resource.data.companyName) && (
+          // Allow executives to update any field except role and supervisorId
+          (!('role' in request.resource.data) && !('supervisorId' in request.resource.data)) ||
+          // Or allow them to update role and supervisorId with valid values
+          (
+            (!('role' in request.resource.data) || 
+             request.resource.data.role in ['team_member', 'supervisor', 'executive']) &&
+            (!('supervisorId' in request.resource.data) || 
+             request.resource.data.supervisorId == '' || 
+             exists(/databases/$(database)/documents/users/$(request.resource.data.supervisorId)))
+          )
+        ))
       );
       allow list: if isAuthenticated() && (isExecutive() || isSupervisor());
       
@@ -82,13 +93,13 @@ service cloud.firestore {
       // Allow users to read/write their own standups, and supervisors to read their team's standups
       match /standups/{standupId} {
         allow read: if isAuthenticated() && (
-          request.auth.uid == userId || // User can read their own standups
-          resource.data.supervisorId == request.auth.uid || // Supervisor can read their team's standups
-          isExecutive() // Executives can read all standups
+          request.auth.uid == userId ||
+          resource.data.supervisorId == request.auth.uid ||
+          isExecutive()
         );
         allow write: if isAuthenticated() && (
-          request.auth.uid == userId || // User can write their own standups
-          request.auth.uid == request.resource.data.supervisorId // Supervisor can write standups for their team
+          request.auth.uid == userId ||
+          request.auth.uid == request.resource.data.supervisorId
         );
       }
     }

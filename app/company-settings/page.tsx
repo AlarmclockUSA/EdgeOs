@@ -163,17 +163,20 @@ function CompanySettings() {
         return
       }
 
-      await updateDoc(userRef, { supervisorId: newSupervisorId })
+      // Convert 'none' value to empty string for storage
+      const supervisorIdToStore = newSupervisorId === 'none' ? '' : newSupervisorId
+
+      await updateDoc(userRef, { supervisorId: supervisorIdToStore })
       toast({
-        title: "Supervisor Assigned",
-        description: "User has been successfully assigned to a supervisor.",
+        title: "Supervisor Updated",
+        description: supervisorIdToStore ? "User has been assigned to a supervisor." : "Supervisor has been removed.",
       })
       fetchUsers()
     } catch (error) {
-      console.error('Error assigning supervisor:', error)
+      console.error('Error updating supervisor:', error)
       toast({
         title: "Error",
-        description: "Failed to assign supervisor. Please try again.",
+        description: "Failed to update supervisor. Please try again.",
         variant: "destructive",
       })
     }
@@ -420,7 +423,7 @@ function CompanySettings() {
                     </TableCell>
                     <TableCell>
                       <Select 
-                        value={user.supervisorId || ''} 
+                        value={user.supervisorId || 'none'} 
                         onValueChange={(value) => handleSupervisorChange(user.id, value)}
                         disabled={user.role === 'executive'}
                       >
@@ -430,11 +433,12 @@ function CompanySettings() {
                               const supervisor = supervisors.find(s => s.id === user.supervisorId)
                               return supervisor 
                                 ? `${supervisor.firstName} ${supervisor.lastName}`
-                                : 'Select supervisor...'
+                                : 'No supervisor'
                             })()}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="none">No supervisor</SelectItem>
                           {supervisors.map(supervisor => (
                             <SelectItem key={supervisor.id} value={supervisor.id}>
                               {supervisor.firstName} {supervisor.lastName}

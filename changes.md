@@ -232,3 +232,30 @@ This file tracks all changes made to the EdgeOS LMS project. Each change will be
   - Description of change
   - Files affected
   - Purpose of change 
+
+## User Management Updates
+
+### Supervisor Assignment Fix
+- Modified supervisor assignment in company settings to allow unassigning supervisors
+- Changed empty string value to 'none' in Select component to fix React error
+- Updated Firestore rules to explicitly allow setting supervisorId to empty string
+- Improved toast messages for supervisor assignment/removal
+- Added proper validation in handleSupervisorChange function
+
+### Code Changes
+1. Updated `app/company-settings/page.tsx`:
+   - Modified Select component to use 'none' instead of empty string
+   - Added conversion from 'none' to empty string in handleSupervisorChange
+   - Updated toast messages to be more descriptive
+   - Improved error handling
+
+2. Updated `firestore.rules`:
+   - Added explicit rules for supervisorId field
+   - Added validation for empty string values
+   - Improved role validation
+
+### Technical Details
+- Select component now uses 'none' as the default value for no supervisor
+- Firestore still stores empty string for unassigned supervisors
+- Added proper type checking and validation
+- Improved error messages and user feedback

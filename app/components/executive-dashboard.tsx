@@ -32,8 +32,37 @@ interface User {
   id: string
   firstName: string
   lastName: string
+  role: string
+  supervisorId: string
   latestBoldAction?: BoldAction
   latestTraining?: Training
+}
+
+interface WeeklyData {
+  boldActions: { completed: boolean }[]
+  standups: { completed: boolean }[]
+}
+
+interface TeamMember {
+  id: string
+  firstName: string
+  lastName: string
+  role: string
+  supervisorId: string
+  weeklyProgress?: WeeklyData
+  fourWeekProgress?: any // TODO: Define specific type if needed
+}
+
+interface TeamMetrics {
+  supervisorName: string
+  teamSize: number
+  members: TeamMember[]
+}
+
+interface WeeklyMetrics {
+  boldActions: { completed: number; total: number }
+  standups: { completed: number; total: number }
+  teams: TeamMetrics[]
 }
 
 const formatDate = (dateValue: any): Date => {
@@ -45,149 +74,174 @@ const formatDate = (dateValue: any): Date => {
 };
 
 export default function ExecutiveDashboard() {
-  const { userRole } = useAuth()
+  const { userRole, companyName } = useAuth()
   const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [weeklyMetrics, setWeeklyMetrics] = useState({
+  const [weeklyMetrics, setWeeklyMetrics] = useState<WeeklyMetrics>({
     boldActions: { completed: 0, total: 0 },
     standups: { completed: 0, total: 0 },
     teams: []
   })
 
+  const fetchUserWeeklyData = async (userId: string): Promise<WeeklyData[]> => {
+    const startOfThisWeek = startOfWeek(new Date())
+    const weeklyData: WeeklyData[] = []
+
+    try {
+      // Fetch bold actions
+      const boldActionsRef = collection(db, `users/${userId}/boldActions`)
+      const boldActionsQuery = query(
+        boldActionsRef,
+        where('createdAt', '>=', startOfThisWeek),
+        orderBy('createdAt', 'desc')
+      )
+      const boldActionsSnapshot = await getDocs(boldActionsQuery)
+      
+      // Fetch standups
+      const standupsRef = collection(db, `users/${userId}/standups`)
+      const standupsQuery = query(
+        standupsRef,
+        where('scheduledFor', '>=', startOfThisWeek),
+        orderBy('scheduledFor', 'desc')
+      )
+      const standupsSnapshot = await getDocs(standupsQuery)
+
+      weeklyData.push({
+        boldActions: boldActionsSnapshot.docs.map(doc => ({
+          completed: doc.data().status === 'completed'
+        })),
+        standups: standupsSnapshot.docs.map(doc => ({
+          completed: doc.data().status === 'completed'
+        }))
+      })
+
+      return weeklyData
+    } catch (error) {
+      console.error(`Error fetching weekly data for user ${userId}:`, error)
+      return []
+    }
+  }
+
+  const fetchUserFourWeekProgress = async (userId: string): Promise<{
+    totalTrainings: number;
+    totalBoldActions: number;
+    totalStandups: number;
+  }> => {
+    const startOfThisWeek = startOfWeek(new Date())
+    const fourWeeksAgo = new Date(startOfThisWeek)
+    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 21) // Go back 3 weeks (21 days) to get 4 weeks total
+
+    try {
+      // Fetch completed trainings
+      const progressRef = doc(db, `users/${userId}/progress/trainings`)
+      const progressDoc = await getDoc(progressRef)
+      const progressData = progressDoc.exists() ? progressDoc.data() : {}
+      
+      const completedTrainings = Object.values(progressData).filter((data: any) => 
+        data.videoCompleted && 
+        data.worksheetCompleted && 
+        data.lastUpdated?.toDate() >= fourWeeksAgo
+      ).length
+
+      // Fetch completed bold actions
+      const boldActionsRef = collection(db, `users/${userId}/boldActions`)
+      const boldActionsQuery = query(
+        boldActionsRef,
+        where('createdAt', '>=', fourWeeksAgo),
+        where('status', '==', 'completed')
+      )
+      const boldActionsSnapshot = await getDocs(boldActionsQuery)
+
+      // Fetch completed standups
+      const standupsRef = collection(db, `users/${userId}/standups`)
+      const standupsQuery = query(
+        standupsRef,
+        where('scheduledFor', '>=', fourWeeksAgo),
+        where('status', '==', 'completed')
+      )
+      const standupsSnapshot = await getDocs(standupsQuery)
+
+      return {
+        totalTrainings: completedTrainings,
+        totalBoldActions: boldActionsSnapshot.size,
+        totalStandups: standupsSnapshot.size
+      }
+    } catch (error) {
+      console.error(`Error fetching four week progress for user ${userId}:`, error)
+      return {
+        totalTrainings: 0,
+        totalBoldActions: 0,
+        totalStandups: 0
+      }
+    }
+  }
+
   const fetchWeeklyMetrics = async () => {
     try {
-      const startOfThisWeek = startOfWeek(new Date())
-      const fourWeeksAgo = new Date(startOfThisWeek)
-      fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 21) // Go back 3 weeks (21 days) to get 4 weeks total
-      
+      if (!companyName) {
+        console.error('Company name not available')
+        return
+      }
+
       const usersRef = collection(db, 'users')
-      const supervisorsQuery = query(usersRef, where('role', '==', 'supervisor'))
+      // Query supervisors from the same company
+      const supervisorsQuery = query(
+        usersRef,
+        where('companyName', '==', companyName),
+        where('role', '==', 'supervisor')
+      )
       const supervisorsSnapshot = await getDocs(supervisorsQuery)
 
-      let totalBoldActions = 0
       let completedBoldActions = 0
-      let totalStandups = 0
+      let totalBoldActions = 0
       let completedStandups = 0
+      let totalStandups = 0
       const teamsMetrics = []
 
-      for (const supervisorDoc of supervisorsSnapshot.docs) {
-        const supervisor = supervisorDoc.data()
-
-        const teamQuery = query(usersRef, where('supervisorId', '==', supervisorDoc.id))
-        const teamSnapshot = await getDocs(teamQuery)
-        const teamSize = teamSnapshot.size
-
-        let teamBoldActionsCompleted = 0
-        let teamStandupsCompleted = 0
+      for (const supervisor of supervisorsSnapshot.docs) {
+        const supervisorData = supervisor.data()
+        let teamSize = 0
         const teamMembers = []
 
-        for (const memberDoc of teamSnapshot.docs) {
+        // Query team members for this supervisor from the same company
+        const teamMembersQuery = query(
+          usersRef,
+          where('companyName', '==', companyName),
+          where('supervisorId', '==', supervisor.id),
+          where('role', '==', 'team_member')
+        )
+        const teamMembersSnapshot = await getDocs(teamMembersQuery)
+        teamSize = teamMembersSnapshot.size
+
+        for (const memberDoc of teamMembersSnapshot.docs) {
           const memberData = memberDoc.data()
-          
-          // Fetch 4 weeks of data
-          const weeklyData = []
-          for (let i = 0; i < 4; i++) {
-            const weekStart = new Date(startOfThisWeek)
-            weekStart.setDate(weekStart.getDate() - (i * 7))
-            const weekEnd = new Date(weekStart)
-            weekEnd.setDate(weekEnd.getDate() + 7)
+          const weeklyData = await fetchUserWeeklyData(memberDoc.id)
+          const fourWeekProgress = await fetchUserFourWeekProgress(memberDoc.id)
 
-            // Fetch bold actions for this week
-            const boldActionsRef = collection(db, `users/${memberDoc.id}/boldActions`)
-            const boldActionsQuery = query(
-              boldActionsRef,
-              where('createdAt', '>=', weekStart),
-              where('createdAt', '<', weekEnd),
-              where('status', '==', 'completed')
-            )
-            const boldActionsSnapshot = await getDocs(boldActionsQuery)
-
-            // Fetch standups for this week
-            const standupsRef = collection(db, `users/${memberDoc.id}/standups`)
-            const standupsQuery = query(
-              standupsRef,
-              where('scheduledFor', '>=', weekStart),
-              where('scheduledFor', '<', weekEnd),
-              where('status', '==', 'completed')
-            )
-            const standupsSnapshot = await getDocs(standupsQuery)
-
-            // Fetch training progress for this week
-            const progressRef = doc(db, `users/${memberDoc.id}/progress/trainings`)
-            const progressDoc = await getDoc(progressRef)
-            const progressData = progressDoc.exists() ? progressDoc.data() : {}
-
-            const weeklyProgress = {
-              trainings: Object.entries(progressData)
-                .filter(([_, data]: [string, any]) => {
-                  const updateDate = data.lastUpdated?.toDate?.() || new Date()
-                  return updateDate >= weekStart && updateDate < weekEnd
-                })
-                .map(([_, data]: [string, any]) => ({
-                  timestamp: data.lastUpdated?.toDate?.() || new Date(),
-                  completed: data.videoCompleted && data.worksheetCompleted
-                })),
-              boldActions: boldActionsSnapshot.docs.map(doc => {
-                const data = doc.data()
-                const completedAt = data.completedAt?.toDate?.() || data.createdAt?.toDate?.() || new Date()
-                return {
-                  timestamp: completedAt,
-                  completed: data.status === 'completed'
-                }
-              }),
-              standups: standupsSnapshot.docs.map(doc => {
-                const data = doc.data()
-                return {
-                  timestamp: data.scheduledFor?.toDate?.() || new Date(),
-                  completed: data.status === 'completed'
-                }
-              }),
-              weekStartDate: weekStart
-            }
-
-            weeklyData.push(weeklyProgress)
-
-            // Count totals for the current week (i === 0)
-            if (i === 0) {
-              totalBoldActions += 1
-              if (boldActionsSnapshot.size > 0) {
-                completedBoldActions += 1
-                teamBoldActionsCompleted += 1
-              }
-
-              totalStandups += 1
-              if (standupsSnapshot.size > 0) {
-                completedStandups += 1
-                teamStandupsCompleted += 1
-              }
-            }
-          }
-
-          // Calculate 4-week totals
-          const fourWeekProgress = {
-            weeklyData,
-            totalTrainings: weeklyData.reduce((sum, week) => 
-              sum + week.trainings.filter(t => t.completed).length, 0),
-            totalBoldActions: weeklyData.reduce((sum, week) => 
-              sum + week.boldActions.filter(b => b.completed).length, 0),
-            totalStandups: weeklyData.reduce((sum, week) => 
-              sum + week.standups.filter(s => s.completed).length, 0)
+          // Update totals
+          if (weeklyData[0]) {
+            completedBoldActions += weeklyData[0].boldActions.filter(ba => ba.completed).length
+            totalBoldActions += weeklyData[0].boldActions.length
+            completedStandups += weeklyData[0].standups.filter(s => s.completed).length
+            totalStandups += weeklyData[0].standups.length
           }
 
           teamMembers.push({
             id: memberDoc.id,
             firstName: memberData.firstName || '',
             lastName: memberData.lastName || '',
+            role: memberData.role || 'team_member',
+            supervisorId: memberData.supervisorId || '',
             weeklyProgress: weeklyData[0], // Current week's data
             fourWeekProgress
           })
         }
 
         teamsMetrics.push({
-          supervisorName: `${supervisor.firstName} ${supervisor.lastName}`,
+          supervisorName: `${supervisorData.firstName} ${supervisorData.lastName}`,
           teamSize,
           members: teamMembers
         })
@@ -234,15 +288,26 @@ export default function ExecutiveDashboard() {
 
   const fetchUsers = async () => {
     try {
+      if (!companyName) {
+        console.error('Company name not available')
+        setError('Company information not available')
+        return
+      }
+
       const usersRef = collection(db, 'users')
-      const querySnapshot = await getDocs(usersRef)
+      const q = query(
+        usersRef, 
+        where('companyName', '==', companyName),
+        where('role', 'in', ['supervisor', 'team_member'])
+      )
+      const querySnapshot = await getDocs(q)
       
       const usersPromises = querySnapshot.docs.map(async userDoc => {
         const userData = userDoc.data()
         const userId = userDoc.id
         
         try {
-            // Fetch bold actions
+          // Fetch bold actions
           const boldActionsRef = collection(db, `users/${userId}/boldActions`)
           const boldActionsQuery = query(
             boldActionsRef,
@@ -267,18 +332,18 @@ export default function ExecutiveDashboard() {
             }
           }
 
-            // Fetch latest training progress
+          // Fetch latest training progress
           const progressRef = doc(db, `users/${userId}/progress/trainings`)
           const progressDoc = await getDoc(progressRef)
           const progressData = progressDoc.exists() ? progressDoc.data() : {}
           
           let latestTraining: Training | undefined
 
-            // Find the most recent training by lastUpdated
+          // Find the most recent training by lastUpdated
           let mostRecentTraining = null
           let mostRecentDate = new Date(0)
 
-            // Type-safe iteration over progress data
+          // Type-safe iteration over progress data
           Object.entries(progressData as DocumentData).forEach(([trainingId, progressValue]) => {
             const progress = progressValue as { videoCompleted: boolean; worksheetCompleted: boolean; lastUpdated: { toDate: () => Date } }
             if (progress?.lastUpdated?.toDate) {
@@ -292,7 +357,7 @@ export default function ExecutiveDashboard() {
 
           if (mostRecentTraining) {
             try {
-                // Fetch training title from trainings collection
+              // Fetch training title from trainings collection
               const trainingRef = doc(db, 'trainings', mostRecentTraining.id)
               const trainingDoc = await getDoc(trainingRef)
               latestTraining = {
@@ -301,7 +366,7 @@ export default function ExecutiveDashboard() {
                 completedAt: mostRecentDate
               }
             } catch (error) {
-              console.error('Error fetching training title:', error)
+              console.error('Error fetching training details:', error)
               latestTraining = {
                 id: mostRecentTraining.id,
                 title: `Training ${mostRecentTraining.id}`,
@@ -314,6 +379,8 @@ export default function ExecutiveDashboard() {
             id: userId,
             firstName: userData.firstName || '',
             lastName: userData.lastName || '',
+            role: userData.role || 'team_member',
+            supervisorId: userData.supervisorId || '',
             latestBoldAction,
             latestTraining
           }
@@ -322,7 +389,9 @@ export default function ExecutiveDashboard() {
           return {
             id: userId,
             firstName: userData.firstName || '',
-            lastName: userData.lastName || ''
+            lastName: userData.lastName || '',
+            role: userData.role || 'team_member',
+            supervisorId: userData.supervisorId || ''
           }
         }
       })

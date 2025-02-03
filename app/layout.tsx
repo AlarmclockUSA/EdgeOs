@@ -83,14 +83,6 @@ function MobileMenu() {
 
   const navigation = navigationItems[userRole as keyof typeof navigationItems] || []
 
-  const handleSignOut = async () => {
-    try {
-      await user.auth.signOut()
-    } catch (error) {
-      console.error('Error signing out:', error)
-    }
-  }
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -107,10 +99,6 @@ function MobileMenu() {
             </Link>
           </DropdownMenuItem>
         ))}
-        <DropdownMenuItem className="text-red-600" onClick={handleSignOut}>
-          <LogOut className="w-5 h-5 mr-2" />
-          Sign Out
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

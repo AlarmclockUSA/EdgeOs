@@ -88,7 +88,12 @@ function CompanySettings() {
   }
 
   const fetchUsers = async () => {
-    if (authCompanyName && db) {
+    if (!authCompanyName || !db) {
+      setError('Company information not available')
+      return
+    }
+
+    try {
       const usersRef = collection(db as Firestore, 'users')
       const q = query(usersRef, where('companyName', '==', authCompanyName))
       const querySnapshot = await getDocs(q)
@@ -98,6 +103,9 @@ function CompanySettings() {
       })) as CompanyUser[]
       setUsers(fetchedUsers)
       setSupervisors(fetchedUsers.filter(user => user.role === 'supervisor' || user.role === 'executive'))
+    } catch (err) {
+      console.error('Error fetching users:', err)
+      setError('Failed to fetch users')
     }
   }
 
@@ -248,8 +256,8 @@ function CompanySettings() {
     }
   }
 
-  const teamMemberLink = authCompanyName ? `${window.location.origin}/brilliant/teamsignup?company=${encodeURIComponent(authCompanyName)}` : ''
-  const supervisorLink = authCompanyName ? `${window.location.origin}/brilliant/supervisorsignup?company=${encodeURIComponent(authCompanyName)}` : ''
+  const teamMemberLink = authCompanyName ? `${window.location.origin}/join/team?company=${encodeURIComponent(authCompanyName)}` : ''
+  const supervisorLink = authCompanyName ? `${window.location.origin}/join/supervisor?company=${encodeURIComponent(authCompanyName)}` : ''
 
   return (
     <div className="pt-8">

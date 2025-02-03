@@ -3,18 +3,25 @@
 import { useAuth } from '@/lib/auth-context'
 import MainSidebar from '@/components/main-sidebar'
 import { cn } from '@/lib/utils'
+import { usePathname } from 'next/navigation'
 
 export function LayoutContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  const pathname = usePathname()
+  const isAuthPage = pathname === '/signin' || pathname === '/register' || pathname === '/forgot-password'
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>
   }
 
+  if (isAuthPage) {
+    return <>{children}</>
+  }
+
   return (
     <div className="flex h-screen w-full bg-[#1E1E1E]">
       {user && <MainSidebar />}
-      <main className="flex-1 ml-64">
+      <main className={cn("flex-1", user && "ml-64")}>
         <div className="h-full p-8">
           <style jsx global>{`
             .custom-scrollbar {

@@ -51,8 +51,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const isAuthPage = window.location.pathname.includes('/signin') || 
                           window.location.pathname.includes('/join-company') ||
                           window.location.pathname.includes('/company-setup') ||
-                          window.location.pathname.includes('/teamsignup') ||
-                          window.location.pathname.includes('/supervisorsignup')
+                          window.location.pathname.includes('/join/team') ||
+                          window.location.pathname.includes('/join/supervisor')
 
         if (!user) {
           setUserRole(null)

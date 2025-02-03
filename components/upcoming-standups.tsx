@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore'
+import { collection, query, where, getDocs, orderBy, Timestamp, doc, updateDoc, arrayUnion, getDoc, setDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/lib/auth-context'
 import { format, startOfDay, isSameDay, isAfter } from 'date-fns'
@@ -59,16 +59,46 @@ export function UpcomingStandups() {
 
     try {
       setCompleting(selectedStandup.id)
-      
-      // Update standup status
-      const standupRef = doc(db, `users/${user.uid}/standups/${selectedStandup.id}`)
       const completedAt = Timestamp.now()
-      await updateDoc(standupRef, {
+      
+      // Update standup status in supervisor's collection first (this is where it was originally created)
+      const supervisorStandupRef = doc(db, `users/${selectedStandup.supervisorId}/standups/${selectedStandup.id}`)
+      await updateDoc(supervisorStandupRef, {
         status: 'completed',
-        completedAt
+        completedAt,
+        notes
       })
+      console.log('Updated supervisor standup doc')
 
-      // Update user's meeting notes using arrayUnion
+      // Update or create standup in team member's collection
+      const teamMemberStandupRef = doc(db, `users/${selectedStandup.teamMemberId}/standups/${selectedStandup.id}`)
+      const teamMemberStandupDoc = await getDoc(teamMemberStandupRef)
+      
+      const standupData = {
+        status: 'completed',
+        completedAt,
+        notes,
+        supervisorName: user.displayName || 'Unknown Supervisor',
+        teamMemberName: selectedStandup.teamMemberName,
+        teamMemberId: selectedStandup.teamMemberId,
+        supervisorId: selectedStandup.supervisorId,
+        scheduledFor: Timestamp.fromDate(selectedStandup.scheduledFor)
+      }
+
+      // Only add meetingLink if it exists
+      if (selectedStandup.meetingLink) {
+        standupData['meetingLink'] = selectedStandup.meetingLink
+      }
+
+      if (!teamMemberStandupDoc.exists()) {
+        await setDoc(teamMemberStandupRef, standupData)
+        console.log('Created new standup doc for team member')
+      } else {
+        await updateDoc(teamMemberStandupRef, standupData)
+        console.log('Updated existing standup doc for team member')
+      }
+
+      // Update user's meeting notes
       const userRef = doc(db, 'users', selectedStandup.teamMemberId)
       await updateDoc(userRef, {
         standupNotes: arrayUnion({
@@ -78,6 +108,7 @@ export function UpcomingStandups() {
           supervisorName: user.displayName || 'Unknown Supervisor'
         })
       })
+      console.log('Updated user meeting notes')
       
       // Update local state
       setStandups(prev => prev.filter(s => s.id !== selectedStandup.id))
@@ -86,6 +117,15 @@ export function UpcomingStandups() {
       toast.success('Standup completed successfully')
     } catch (error) {
       console.error('Error completing standup:', error)
+      // More detailed error logging
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          teamMemberId: selectedStandup?.teamMemberId,
+          standupId: selectedStandup?.id
+        })
+      }
       toast.error('Failed to complete standup')
     } finally {
       setCompleting(null)

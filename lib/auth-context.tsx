@@ -74,6 +74,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               setCompanyId(userData.companyId || null)
               setCompanyName(userData.companyName || null)
 
+              // Sync display name if it doesn't match
+              if (user.displayName !== `${userData.firstName} ${userData.lastName}`) {
+                await user.updateProfile({
+                  displayName: `${userData.firstName} ${userData.lastName}`
+                })
+              }
+
               // If user has no company association, redirect to join company
               if (!userData.companyName && !isAuthPage) {
                 router.push('/join-company')

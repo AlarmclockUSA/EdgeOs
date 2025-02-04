@@ -76,31 +76,41 @@ const CompactMetric = ({ completed, total }: { completed: number; total: number 
 }
 
 // Helper functions to check if activities are completed this week
-const isThisWeek = (timestamp: string | Date): boolean => {
-  const date = timestamp instanceof Date ? timestamp : new Date(timestamp)
-  const now = new Date()
-
-  // Get the current week number for both dates
-  const getWeekNumber = (d: Date): number => {
-    // Copy date so don't modify original
-    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
-    // Set to nearest Thursday: current date + 4 - current day number
-    // Make Sunday's day number 7
-    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7))
-    // Get first day of year
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-    // Calculate full weeks to nearest Thursday
-    const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
-    return weekNo
+const isThisWeek = (timestamp: any): boolean => {
+  if (!timestamp) return false;
+  
+  let date: Date;
+  // Handle Firestore Timestamp
+  if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+    date = timestamp.toDate();
+  }
+  // Handle Date object
+  else if (timestamp instanceof Date) {
+    date = timestamp;
+  }
+  // Handle string
+  else if (typeof timestamp === 'string') {
+    date = new Date(timestamp);
+  }
+  // Handle seconds timestamp
+  else if (timestamp.seconds) {
+    date = new Date(timestamp.seconds * 1000);
+  }
+  else {
+    return false;
   }
 
-  return getWeekNumber(date) === getWeekNumber(now) && 
-         date.getFullYear() === now.getFullYear()
+  const now = new Date();
+  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(endOfWeek.getDate() + 6);
+  
+  return date >= startOfWeek && date <= endOfWeek;
 }
 
 const hasCompletedThisWeek = (submissions: Submission[] = []): boolean => {
-  if (!Array.isArray(submissions)) return false
-  return submissions.some(s => s.completed && isThisWeek(s.timestamp))
+  if (!Array.isArray(submissions)) return false;
+  return submissions.some(s => s.completed && isThisWeek(s.timestamp));
 }
 
 const DetailedMetrics = ({ team }: { team: TeamMetrics }) => {

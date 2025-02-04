@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { addDoc, collection, serverTimestamp, doc } from 'firebase/firestore'
+import { addDoc, collection, serverTimestamp, doc, Timestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { toast } from '@/components/ui/use-toast'
 import { useAuth } from '@/lib/auth-context'
@@ -27,46 +27,39 @@ export function ScheduleStandupModal({ isOpen, onClose, teamMember }: ScheduleSt
   const { user } = useAuth()
 
   const handleSubmit = async () => {
-    if (!date || !time || !user?.uid) return
-
+    if (!date || !time || !user) return
+    
     setIsSubmitting(true)
     try {
-      const datetime = new Date(`${date}T${time}`)
+      const scheduledFor = new Date(`${date}T${time}`)
       
-      // Create standup in team member's subcollection
-      const teamMemberDoc = doc(db, 'users', teamMember.id)
-      const teamMemberStandupsCollection = collection(teamMemberDoc, 'standups')
-      
-      // Create standup in supervisor's subcollection
-      const supervisorDoc = doc(db, 'users', user.uid)
-      const supervisorStandupsCollection = collection(supervisorDoc, 'standups')
-      
-      // Create the standup data
+      // Create standup document in supervisor's collection
       const standupData = {
-        supervisorId: user.uid,
-        teamMemberId: teamMember.id,
-        scheduledFor: datetime,
+        scheduledFor: Timestamp.fromDate(scheduledFor),
         status: 'scheduled',
-        createdAt: serverTimestamp(),
-        teamMemberName: `${teamMember.firstName} ${teamMember.lastName}` // Add team member name for supervisor's view
+        teamMemberName: `${teamMember.firstName} ${teamMember.lastName}`,
+        teamMemberId: teamMember.id,
+        supervisorId: user.uid,
+        supervisorName: user.displayName || 'Unknown Supervisor',
+        meetingLink: `https://meet.google.com/${Math.random().toString(36).substring(7)}`
       }
       
-      // Write to both collections
-      await Promise.all([
-        addDoc(teamMemberStandupsCollection, standupData),
-        addDoc(supervisorStandupsCollection, standupData)
-      ])
+      // Add to supervisor's collection
+      await addDoc(collection(db, `users/${user.uid}/standups`), standupData)
+      
+      // Add to team member's collection
+      await addDoc(collection(db, `users/${teamMember.id}/standups`), standupData)
 
       toast({
         title: "Success",
-        description: `Standup scheduled with ${teamMember.firstName} for ${date} at ${time}`,
+        description: "Standup scheduled successfully",
       })
-
-      // Trigger refresh of all UpcomingStandups components
+      
+      // Refresh standups list if the function exists
       if (window.refreshStandups) {
         window.refreshStandups()
       }
-
+      
       onClose()
     } catch (error) {
       console.error('Error scheduling standup:', error)

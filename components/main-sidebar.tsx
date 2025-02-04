@@ -117,10 +117,11 @@ const MainSidebar = () => {
       </div>
     );
 
-    const settingsItems = (userRole === 'executive') && (
+    // Company Settings only for executives
+    const companySettings = userRole === 'executive' && (
       <div>
         <h2 className="px-4 text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
-          SETTINGS
+          COMPANY
         </h2>
         <div className="space-y-1">
           <NavItem 
@@ -129,6 +130,17 @@ const MainSidebar = () => {
             label="Company Settings" 
             isActive={pathname === '/company-settings'} 
           />
+        </div>
+      </div>
+    );
+
+    // Account Settings available for all users
+    const accountSettings = (
+      <div>
+        <h2 className="px-4 text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">
+          ACCOUNT
+        </h2>
+        <div className="space-y-1">
           <NavItem 
             icon={Settings} 
             label="Account Settings" 
@@ -142,7 +154,8 @@ const MainSidebar = () => {
       <>
         {learningItems}
         {overviewItems}
-        {settingsItems}
+        {companySettings}
+        {accountSettings}
       </>
     );
   };

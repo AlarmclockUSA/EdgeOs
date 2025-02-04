@@ -72,6 +72,11 @@ export default function SupervisorSignup() {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password)
         const uid = userCredential.user.uid
         
+        // Set display name
+        await userCredential.user.updateProfile({
+          displayName: `${firstName} ${lastName}`
+        })
+        
         // Get company reference
         const companyRef = doc(db, 'companies', companyName)
         const companyDoc = await transaction.get(companyRef)

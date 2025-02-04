@@ -24,6 +24,13 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyName == companyName;
     }
 
+    // Helper function to check if request is for leaderboard data only
+    function isLeaderboardRequest() {
+      return request.query.limit <= 3 &&
+             request.query.orderBy == 'completedBoldActions' &&
+             'companyName' in request.query.where;
+    }
+
     // Companies collection rules
     match /companies/{companyName} {
       // Allow reading basic company info for signup verification
@@ -44,8 +51,9 @@ service cloud.firestore {
       allow create: if true;
       allow read: if isAuthenticated() && (
         request.auth.uid == userId || 
-        (isExecutive() && belongsToCompany(resource.data.companyName)) ||
-        (isSupervisor() && belongsToCompany(resource.data.companyName))
+        belongsToCompany(resource.data.companyName) ||  // Allow reading users from same company
+        isExecutive() || 
+        isSupervisor()
       );
       allow update: if isAuthenticated() && (
         request.auth.uid == userId || 
@@ -62,7 +70,11 @@ service cloud.firestore {
           )
         ))
       );
-      allow list: if isAuthenticated() && (isExecutive() || isSupervisor());
+      allow list: if isAuthenticated() && (
+        belongsToCompany(resource.data.companyName) ||  // Allow listing users from same company
+        isExecutive() || 
+        isSupervisor()
+      );
       
       // Allow users to read/write their own worksheets, and executives/supervisors to read
       match /worksheets/{worksheetId} {
@@ -101,9 +113,23 @@ service cloud.firestore {
           resource.data.supervisorId == request.auth.uid ||
           isExecutive()
         );
-        allow write: if isAuthenticated() && (
-          request.auth.uid == userId ||
-          request.auth.uid == request.resource.data.supervisorId
+        allow create: if isAuthenticated() && (
+          // Team members can only join meetings
+          (request.auth.uid == userId && request.resource.data.status == 'joined') ||
+          // Supervisors and executives can create with any status
+          ((isExecutive() || isSupervisor()) && request.auth.uid == request.resource.data.supervisorId)
+        );
+        allow update: if isAuthenticated() && (
+          // Team members can only update their join status
+          (request.auth.uid == userId && 
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && 
+           request.resource.data.status == 'joined') ||
+          // Supervisors and executives can update all fields
+          ((isExecutive() || isSupervisor()) && request.auth.uid == request.resource.data.supervisorId)
+        );
+        allow delete: if isAuthenticated() && (
+          isExecutive() || 
+          (isSupervisor() && request.auth.uid == resource.data.supervisorId)
         );
       }
     }

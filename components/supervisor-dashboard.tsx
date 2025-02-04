@@ -130,7 +130,7 @@ export default function SupervisorDashboard() {
       <Card className="bg-white rounded-none border-0 mb-8">
         <CardHeader className="bg-gradient-to-r from-[#1E3A8A] to-[#2563EB]">
           <CardTitle className="text-xl sm:text-2xl font-semibold text-white">5-Minute Stand ups</CardTitle>
-          <p className="text-white/80">Quick check-ins with your team</p>
+          <p className="text-white/80">Quick check-ins with your team leader</p>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <UpcomingStandups />

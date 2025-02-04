@@ -39,6 +39,7 @@ interface Standup {
   supervisorId: string
   teamMemberId: string
   meetingLink?: string
+  supervisorName: string
 }
 
 export function UpcomingStandups() {
@@ -193,7 +194,8 @@ export function UpcomingStandups() {
               teamMemberName: data.teamMemberName,
               supervisorId: data.supervisorId,
               teamMemberId: data.teamMemberId,
-              meetingLink: data.meetingLink
+              meetingLink: data.meetingLink,
+              supervisorName: data.supervisorName
             }
           })
           .filter((standup): standup is Standup => {
@@ -255,7 +257,7 @@ export function UpcomingStandups() {
               >
                 <div>
                   <p className="font-medium text-[#333333]">
-                    {standup.teamMemberName}
+                    {userRole === 'team_member' ? standup.supervisorName : standup.teamMemberName}
                   </p>
                   <p className="text-sm text-[#666666]">
                     {format(standup.scheduledFor, 'MMM d, yyyy')} at {format(standup.scheduledFor, 'h:mm a')}
@@ -270,18 +272,20 @@ export function UpcomingStandups() {
                     className="bg-[#0056D2] text-white hover:bg-[#EAF4FE] hover:text-[#0056D2]"
                   >
                     <Video className="w-4 h-4 mr-2" />
-                    Start Meeting
+                    Join Meeting
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedStandup(standup)}
-                    disabled={completing === standup.id}
-                    className="bg-[#0056D2] text-white hover:bg-[#EAF4FE] hover:text-[#0056D2]"
-                  >
-                    <Check className="w-4 h-4 mr-2" />
-                    Complete
-                  </Button>
+                  {(userRole === 'executive' || userRole === 'supervisor') && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedStandup(standup)}
+                      disabled={completing === standup.id}
+                      className="bg-[#0056D2] text-white hover:bg-[#EAF4FE] hover:text-[#0056D2]"
+                    >
+                      <Check className="w-4 h-4 mr-2" />
+                      Complete
+                    </Button>
+                  )}
                 </div>
               </div>
             ))
@@ -293,37 +297,39 @@ export function UpcomingStandups() {
         </div>
       </ScrollArea>
 
-      <Dialog open={!!selectedStandup} onOpenChange={(open) => !open && setSelectedStandup(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Complete Standup with {selectedStandup?.teamMemberName}</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <Textarea
-              placeholder="Enter meeting notes..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="min-h-[150px]"
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setSelectedStandup(null)}
-              className="mr-2"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleComplete}
-              disabled={completing === selectedStandup?.id || !notes.trim()}
-              className="bg-[#0056D2] text-white hover:bg-[#0056D2]/90"
-            >
-              {completing === selectedStandup?.id ? 'Completing...' : 'Complete Standup'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {(userRole === 'executive' || userRole === 'supervisor') && (
+        <Dialog open={!!selectedStandup} onOpenChange={(open) => !open && setSelectedStandup(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Complete Standup with {selectedStandup?.teamMemberName}</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <Textarea
+                placeholder="Enter meeting notes..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="min-h-[150px]"
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setSelectedStandup(null)}
+                className="mr-2"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleComplete}
+                disabled={completing === selectedStandup?.id || !notes.trim()}
+                className="bg-[#0056D2] text-white hover:bg-[#0056D2]/90"
+              >
+                {completing === selectedStandup?.id ? 'Completing...' : 'Complete Standup'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   )
 } 

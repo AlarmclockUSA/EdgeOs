@@ -131,11 +131,18 @@ export function WorksheetModal({ isOpen, onClose, worksheetId, onSubmit }: Works
         })
 
         // Update user progress in progress subcollection
+        const now = new Date();
+        console.log('Setting worksheet completion timestamp:', {
+          worksheetId,
+          timestamp: now,
+          timestampType: now.constructor.name
+        });
+        
         const progressRef = doc(db, `users/${user.uid}/progress/trainings`)
         await setDoc(progressRef, {
           [worksheetId]: {
             worksheetCompleted: true,
-            lastUpdated: new Date().toISOString()
+            lastUpdated: now
           }
         }, { merge: true })
 

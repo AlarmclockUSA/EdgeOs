@@ -684,7 +684,7 @@ export default function Dashboard() {
             <CardHeader className="p-4 sm:p-6 bg-gradient-to-r from-[#1E3A8A] to-[#2563EB]">
               <CardTitle className="text-xl sm:text-2xl font-semibold text-white">5-Minute Stand ups</CardTitle>
               <p className="text-white/80">
-                Quick check-ins with your team
+                Quick check-ins with your team leader
               </p>
             </CardHeader>
             <CardContent className="flex-grow p-4 sm:p-6">

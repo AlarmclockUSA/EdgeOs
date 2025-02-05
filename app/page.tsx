@@ -657,7 +657,7 @@ export default function Dashboard() {
   })
 
   return (
-    <div>
+    <div className="space-y-8">
       {/* Video Module at the top - completely flush */}
       {currentTraining && (
         <VideoModule 

@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, Library, Target, Users, LayoutDashboard, Cog, Settings, LogOut } from 'lucide-react';
+import { BookOpen, Library, Target, Users, LayoutDashboard, Cog, Settings, LogOut, HelpCircle } from 'lucide-react';
 import { AccountSettingsModal } from './account-settings-modal';
+import { OnboardingModal } from './onboarding-modal';
 import { auth } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
+import { useOnboarding } from '@/lib/hooks/use-onboarding';
 
 interface NavItemProps {
   href?: string;
@@ -50,6 +52,8 @@ const MainSidebar = () => {
   const router = useRouter();
   const { userRole } = useAuth();
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const { showOnboarding } = useOnboarding();
 
   const handleSignOut = async () => {
     console.log('Sign out button clicked');
@@ -146,6 +150,13 @@ const MainSidebar = () => {
             label="Account Settings" 
             onClick={() => setIsAccountModalOpen(true)}
           />
+          {(userRole === 'executive' || userRole === 'supervisor') && (
+            <NavItem 
+              icon={HelpCircle} 
+              label="Onboarding Guide" 
+              onClick={() => setIsOnboardingOpen(true)}
+            />
+          )}
         </div>
       </div>
     );
@@ -188,6 +199,11 @@ const MainSidebar = () => {
       <AccountSettingsModal 
         isOpen={isAccountModalOpen}
         onClose={() => setIsAccountModalOpen(false)}
+      />
+      
+      <OnboardingModal 
+        isOpen={isOnboardingOpen} 
+        onClose={() => setIsOnboardingOpen(false)} 
       />
     </>
   );

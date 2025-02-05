@@ -19,8 +19,28 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Toaster } from '@/components/ui/toaster'
+import { OnboardingModal } from '@/components/onboarding-modal'
+import { useOnboarding } from '@/lib/hooks/use-onboarding'
 
 const ErrorBoundary = dynamic(() => import('@/components/error-boundary'), { ssr: false })
+
+function RootLayoutContent({ children }: { children: React.ReactNode }) {
+  const { showOnboarding, setShowOnboarding, loading } = useOnboarding()
+
+  if (loading) return null
+
+  return (
+    <>
+      {children}
+      <OnboardingModal 
+        isOpen={showOnboarding} 
+        onClose={() => setShowOnboarding(false)} 
+      />
+      <Toaster />
+    </>
+  )
+}
 
 export default function RootLayout({
   children,
@@ -38,7 +58,9 @@ export default function RootLayout({
                   <div className="md:hidden absolute top-4 right-4 z-50">
                     <MobileMenu />
                   </div>
-                  <LayoutContent>{children}</LayoutContent>
+                  <RootLayoutContent>
+                    <LayoutContent>{children}</LayoutContent>
+                  </RootLayoutContent>
                 </Suspense>
               </SidebarProvider>
             </ThemeProvider>

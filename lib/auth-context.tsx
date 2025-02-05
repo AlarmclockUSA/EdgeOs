@@ -1,11 +1,11 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { onAuthStateChanged, User, Auth } from 'firebase/auth'
+import { onAuthStateChanged, User, Auth, setPersistence, browserLocalPersistence } from 'firebase/auth'
 import { doc, getDoc, Firestore } from 'firebase/firestore'
 import { auth as firebaseAuth, db } from './firebase'
 import { syncUserRoles, LMSRole } from './auth/role-mapping'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 
 interface AuthContextType {
   user: User | null
@@ -27,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [userRole, setUserRole] = useState<LMSRole | null>(null)
@@ -44,15 +45,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
+      try {
+        // Set persistence to LOCAL
+        await setPersistence(firebaseAuth as Auth, browserLocalPersistence)
+      } catch (error) {
+        console.error('Error setting auth persistence:', error)
+      }
+
       unsubscribe = onAuthStateChanged(firebaseAuth as Auth, async (user) => {
+        console.log('Auth state changed:', { userId: user?.uid, pathname })
         setUser(user)
         
-        // Check if we're on an auth page
-        const isAuthPage = window.location.pathname.includes('/signin') || 
-                          window.location.pathname.includes('/join-company') ||
-                          window.location.pathname.includes('/company-setup') ||
-                          window.location.pathname.includes('/join/team') ||
-                          window.location.pathname.includes('/join/supervisor')
+        // Updated auth pages check
+        const isAuthPage = pathname === '/signin' || 
+                          pathname === '/company-setup' ||
+                          pathname === '/join/team' ||
+                          pathname === '/join/supervisor' ||
+                          pathname === '/forgot-password'
 
         if (!user) {
           setUserRole(null)
@@ -60,31 +69,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setCompanyName(null)
           setPermissions([])
           
-          // If not on an auth page, redirect to signin
+          // Only redirect to signin if not already on an auth page
           if (!isAuthPage) {
+            console.log('No user, redirecting to signin')
             router.push('/signin')
           }
         } else {
           try {
             const userDoc = await getDoc(doc(db as Firestore, 'users', user.uid))
+            
             if (userDoc.exists()) {
               const userData = userDoc.data()
               const role = userData.role as LMSRole
+              
+              console.log('User data loaded:', { role, companyName: userData.companyName })
+              
               setUserRole(role)
               setCompanyId(userData.companyId || null)
               setCompanyName(userData.companyName || null)
 
               // Sync display name if it doesn't match
-              if (user.displayName !== `${userData.firstName} ${userData.lastName}`) {
-                await user.updateProfile({
-                  displayName: `${userData.firstName} ${userData.lastName}`
-                })
-              }
-
-              // If user has no company association, redirect to join company
-              if (!userData.companyName && !isAuthPage) {
-                router.push('/join-company')
-                return
+              const displayName = `${userData.firstName} ${userData.lastName}`
+              if (user.displayName !== displayName) {
+                try {
+                  await user.updateProfile({
+                    displayName
+                  })
+                } catch (error) {
+                  console.error('Error updating display name:', error)
+                }
               }
 
               // Sync roles and get permissions
@@ -94,14 +107,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               })
 
               setPermissions(syncedRoles.permissions)
-            } else if (!isAuthPage) {
-              // If user exists in Firebase Auth but not in Firestore, redirect to join company
-              router.push('/join-company')
+
+              // If on an auth page and authenticated, redirect to home
+              if (isAuthPage) {
+                console.log('User authenticated, redirecting to home')
+                router.push('/')
+              }
+            } else {
+              console.error('No user document found for:', user.uid)
+              if (!isAuthPage) {
+                router.push('/signin')
+              }
             }
           } catch (error) {
             console.error('Error fetching user data:', error)
             if (!isAuthPage) {
-              router.push('/join-company')
+              router.push('/signin')
             }
           }
         }
@@ -113,7 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth()
 
     return () => unsubscribe()
-  }, [router])
+  }, [router, pathname])
 
   return (
     <AuthContext.Provider value={{ 

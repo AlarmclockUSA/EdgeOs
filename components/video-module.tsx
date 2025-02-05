@@ -63,14 +63,14 @@ export function VideoModule({
                     <span className={cn(
                       videoWatched ? "text-[#22C55E]" : "text-white/70"
                     )}>
-                      Video Not Watched
+                      {videoWatched ? "Video Watched" : "Video Not Watched"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={cn(
                       worksheetCompleted ? "text-[#22C55E]" : "text-white/70"
                     )}>
-                      Worksheet Completed
+                      {worksheetCompleted ? "Worksheet Completed" : "Worksheet Not Completed"}
                     </span>
                   </div>
                 </div>
